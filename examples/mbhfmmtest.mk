@@ -10,7 +10,7 @@ HOST=linux-gfortran
 
 PGFLAG= 
 FOPENMP=-fopenmp
-#FOPENMP=
+FOPENMP=
 
 ifeq ($(HOST),linux)
 
