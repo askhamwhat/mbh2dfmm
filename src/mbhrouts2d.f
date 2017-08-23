@@ -1,4 +1,4 @@
-cc Copyright (C) 2017: Travis Askham
+cc Copyright (C) 2017: Travis Askham, Leslie Greengard
 cc Contact: askhamwhat@gmail.com
 cc 
 cc This program is free software; you can redistribute it and/or modify 

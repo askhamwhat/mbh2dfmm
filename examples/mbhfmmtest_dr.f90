@@ -21,8 +21,10 @@ program mbhfmmtest
   complex *16, allocatable :: csave(:)
   parameter (maxsrc = 1000000)
   integer :: isrcsort(maxsrc), isrcladder(2,maxboxes)
+  integer :: itargsort(maxsrc), itargladder(2,maxboxes)  
   real *8 :: src(2,maxsrc), srcsort(2,maxsrc), zll(2), blength
-  real *8 :: dsdt(maxsrc), rnx(maxsrc), rny(maxsrc), targ(2,maxsrc)
+  real *8 :: targ(2,maxsrc), targsort(2,maxsrc)
+  real *8 :: dsdt(maxsrc), rnx(maxsrc), rny(maxsrc)
   real *8 :: charge(maxsrc), dipstr(maxsrc), chargesort(maxsrc)
   real *8 :: dipstrsort(maxsrc), dipvec(2,maxsrc), dipvecsort(2,maxsrc)
   real *8 :: quadstr(maxsrc), quadstrsort(maxsrc), quadvec(3,maxsrc)
@@ -42,7 +44,7 @@ program mbhfmmtest
 
   ! Test accuracy against direct calculation
 
-  ifdirect = 0
+  ifdirect = 1
 
   ! Print out geometry, targets, and leaf boxes to various files
 
@@ -76,7 +78,7 @@ program mbhfmmtest
   blength = 1.0d0
   zll(1:2) = (/ -0.5d0, -0.5d0 /)
 
-  ns = 10000
+  ns = 1000
 
   h = 2.0d0*pi/ns
 
@@ -119,7 +121,7 @@ program mbhfmmtest
         targ(2,i+nt/2) = yc+ (b-10.0d0*curvenrm)*sin(t) - .01d0
      enddo
   else
-     nt = 1000000
+     nt = 1000
      do i = 1,nt
         targ(1,i) = zll(1) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
         targ(2,i) = zll(2) + 2*blength/4.0d0 + blength*hkrand(0)/4.0d0
@@ -148,12 +150,18 @@ program mbhfmmtest
   !call prin2('quadstr *',quadstr,3*ns)
   !call prin2('quadvec *',quadvec,3*ns)
 
-  maxnodes = 2
+  maxnodes = 10
   time1 = second()
-  call lrt2d_mktpts(levelbox, icolbox, irowbox, nboxes, nlev, &
+!  call lrt2d_mktpts(levelbox, icolbox, irowbox, nboxes, nlev, &
+!       iparentbox, ichildbox, nblevel, iboxlev, istartlev, &
+!       maxboxes, itemparray, maxlevel, src, srcsort, isrcsort, &
+  !       isrcladder, ns, maxnodes, zll, blength, ier)
+  call lrt2d_mktst(levelbox, icolbox, irowbox, nboxes, nlev, &
        iparentbox, ichildbox, nblevel, iboxlev, istartlev, &
        maxboxes, itemparray, maxlevel, src, srcsort, isrcsort, &
-       isrcladder, ns, maxnodes, zll, blength, ier)
+       isrcladder, ns, targ, targsort, itargsort, itargladder, nt, &
+       maxnodes, zll, blength, ier, localonoff)
+  
   time2 = second()
 
   call prin2('TIME TO MAKE TREE *',time2-time1,1)
@@ -250,7 +258,7 @@ program mbhfmmtest
 
   call prin2('TIME FOR DIRECT*',time2-time1,1)  
 
-  iprec = 1
+  iprec = 3
 
   call prinf('START FMM .........*',ifpot,0)
   

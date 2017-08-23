@@ -8,9 +8,12 @@ PROJECT=MBHFMMTEST  # for historical reasons we always like to
 HOST=linux-gfortran
 #HOST=linux-gfortran-openmp
 
+GDB=-g
+GDB=
+
 PGFLAG= 
 FOPENMP=-fopenmp
-FOPENMP=
+#FOPENMP=
 
 ifeq ($(HOST),linux)
 
@@ -39,8 +42,8 @@ ifeq ($(HOST),linux-gfortran)
 OBJSUF=o
 MODSUF=mod
 FC=gfortran -c 
-FFLAGS=-g -O3 $(FOPENMP)
-FLINK=gfortran -o $(PROJECT) -g $(FOPENMP)
+FFLAGS=$(GDB) -O3 $(FOPENMP)
+FLINK=gfortran -o $(PROJECT) $(GDB) $(FOPENMP)
 #PGFLAG=
 
 else
@@ -121,7 +124,7 @@ OBJSUF=o
 MODSUF=mod
 FC=fort77 -c
 FFLAGS=-fast 
-FLINK=fort77 -o $(PROJECT) -static -g
+FLINK=fort77 -o $(PROJECT) -static $(GDB)
 WITH_SECOND=1
 
 else 
