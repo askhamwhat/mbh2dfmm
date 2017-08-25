@@ -452,7 +452,7 @@ c$    time0 = omp_get_wtime()
      2        ival,diffs,pow)
 C$OMP PARALLEL DO PRIVATE(ii,j,ic1,ic2,ic3,ic4)
 C$OMP& PRIVATE(istartbox,iendbox,nsbox,zbox)
-C$OMP&  IF(iend-istart .gt. 100)
+C$OMP&  IF(iend-istart .gt. 10)
 C$OMP&  SCHEDULE(static,1)
          do ii = istart,iend
             j = iboxlev(ii)
@@ -531,7 +531,7 @@ C$OMP& PRIVATE(iebig1, iwbig2, iebig4, iwbig3)
 C$OMP& PRIVATE(iz4,mbhmpc1,ympc1,mbhmpc2,ympc2)
 C$OMP& PRIVATE(mbhmpc3,ympc3,mbhmpc4,ympc4,isrcc1,isrcc2)
 C$OMP& PRIVATE(isrcc3,isrcc4)        
-C$OMP&  IF(nboxes .gt. 10000)
+C$OMP&  IF(nboxes .gt. 1000)
 C$OMP&  SCHEDULE(dynamic,100)
          do ii = 1,nboxes
             j = iboxlev(ii)
@@ -1003,7 +1003,7 @@ c
          
 
 C$OMP PARALLEL DO PRIVATE(jj,b,ii,ic1,ic2,ic3,ic4,j) 
-C$OMP& IF(iend-istart .gt. 100) 
+C$OMP& IF(iend-istart .gt. 10) 
 C$OMP& SCHEDULE(static,1)
          do jj = istart,iend
             j = iboxlev(jj)
@@ -1033,7 +1033,7 @@ C$OMP END PARALLEL DO
 c$    time1 = omp_get_wtime()
       if(ifp.eq.1) write(*,*) 'wall time, downward pass: ', time1-time0
 
-C$OMP PARALLEL DO SCHEDULE(static) IF(nboxes .gt. 10000)
+C$OMP PARALLEL DO SCHEDULE(static) IF(nboxes .gt. 1000)
       do i = 1,nboxes
          if (iflageast(i) .eq. 1 .or. iflagwest(i) .eq. 1 
      1        .or. iflagnorth(i) .eq. 1 .or. iflagsouth(i) .eq. 1) then
@@ -1143,8 +1143,10 @@ c     local
       real *8 dzero
       data dzero / 0.0d0 /
 
-C$OMP PARALLEL DO PRIVATE(ibox,xlength,ii,jsrc,istartbox,iendbox,nsbox,
-C$OMP& icol, irow, ntbox, rscale, zbox, ier2) IF(nt .gt. OMP_MIN_VAL)
+C$OMP PARALLEL DO PRIVATE(i,ibox,xlength,ii,jsrc,istartbox,iendbox,
+C$OMP& nsbox, icol, irow, ntbox, rscale, zbox, zboxc,ier2,xt,yt,ic,
+C$OMP& ilev) 
+C$OMP& IF(nt .gt. OMP_MIN_VAL)
 C$OMP& SCHEDULE(dynamic,100)
       do i = 1,nt
 
@@ -1377,7 +1379,7 @@ c     local
       data dzero / 0.0d0 /
 
 C$OMP PARALLEL DO PRIVATE(ibox,xlength,ii,jsrc,istartbox,iendbox,nsbox,
-C$OMP& icol, irow, ntbox, rscale, zbox, zboxc, ier2) 
+C$OMP& icol, irow, ntbox, rscale, zbox, zboxc, ier2, ic, xt, yt, ilev) 
 C$OMP& IF(nt .gt. OMP_MIN_VAL)
 C$OMP& SCHEDULE(dynamic,100)
       do i = 1,nt
@@ -1624,7 +1626,7 @@ c     local
 C$OMP PARALLEL DO PRIVATE(ibox,xlength,ii,jsrc,istartbox,iendbox,nsbox,
 C$OMP& icol,irow,ntbox,rscale,zbox,ier2,zx,zy,j,nsbox1,itemp,zboxc,
 C$OMP& xt,yt,ic,ilev) 
-c$OMP& IF(nt .gt. OMP_MIN_VAL)
+C$OMP& IF(nt .gt. OMP_MIN_VAL)
 C$OMP& SCHEDULE(dynamic,100)
       do i = 1,nt
 

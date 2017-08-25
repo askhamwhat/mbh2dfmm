@@ -78,7 +78,7 @@ program mbhfmmtest
   blength = 1.0d0
   zll(1:2) = (/ -0.5d0, -0.5d0 /)
 
-  ns = 1000
+  ns = 10000
 
   h = 2.0d0*pi/ns
 
@@ -121,7 +121,7 @@ program mbhfmmtest
         targ(2,i+nt/2) = yc+ (b-10.0d0*curvenrm)*sin(t) - .01d0
      enddo
   else
-     nt = 1000
+     nt = 10000
      do i = 1,nt
         targ(1,i) = zll(1) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
         targ(2,i) = zll(2) + 2*blength/4.0d0 + blength*hkrand(0)/4.0d0
@@ -231,6 +231,16 @@ program mbhfmmtest
        src, srcsort, isrcsort, &
        isrcladder, ns, zll, blength, ier)
 
+  call lrt2d_ptsort_wc(levelbox,icolbox,irowbox,nboxes,nlev, &
+       iparentbox, ichildbox, nblevel, iboxlev, istartlev, &
+       targ, targsort, itargsort, &
+       itargladder, ns, zll, blength, ier)
+
+  do i = 1,nboxes
+     localonoff(i) = 0
+     if (itargladder(2,i)-itargladder(1,i)+1 .gt. 0) localonoff(i) = 1
+  enddo
+
   do i = 1,ns
      chargesort(i) = charge(isrcsort(i))
      dipstrsort(i) = dipstr(isrcsort(i))
@@ -258,7 +268,7 @@ program mbhfmmtest
 
   call prin2('TIME FOR DIRECT*',time2-time1,1)  
 
-  iprec = 3
+  iprec = 2
 
   call prinf('START FMM .........*',ifpot,0)
   
@@ -269,7 +279,7 @@ program mbhfmmtest
   
   write(*,*) 'query storage '
 
-  ifalltarg = 1
+  ifalltarg = 0
   call mbhfmm2d_form(beta,ier,iprec,nlev,levelbox,iparentbox, &
        ichildbox, icolbox, irowbox, nboxes, nblevel, iboxlev, &
        istartlev, ifalltarg, localonoff, zll, blength, ns, srcsort, &
@@ -339,8 +349,14 @@ program mbhfmmtest
            !write(*,*) i, temp1/temp2
            absnorm = dabs(temp1)
            abserr = dabs(temp1-temp2)
-           if (absnorm .gt. absnormmax) absnormmax = absnorm
-           if (abserr .gt. abserrmax) abserrmax = abserr
+           if (absnorm .gt. absnormmax) then
+              absnormmax = absnorm
+              !write(*,*) temp1, temp2
+           endif
+           if (abserr .gt. abserrmax) then
+              abserrmax = abserr
+              write(*,*) i, temp1, temp2
+           endif
         enddo
 
         call prin2('ABS ERR (POT) *',abserrmax,1)

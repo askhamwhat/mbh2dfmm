@@ -1508,7 +1508,7 @@ C***********************************************************************
      1     iparentbox, ichildbox, nblevel, iboxlev, istartlev,
      2     maxboxes, itemparray, maxlevel, src, srcsort, isrcsort,
      3     isrcladder, ns, targ, targsort, itargsort, itargladder, nt,
-     4     maxnodes, zll, blength, ier, localonoff)
+     4     maxnodes, zll, blength, ier)
 c-----Global variables
       implicit none
       real *8 xlength
@@ -1520,7 +1520,7 @@ c-----Global variables
       integer itemparray(*)
       integer isrcsort(*), isrcladder(2,*)
       integer itargsort(*), itargladder(2,*)
-      integer ier, localonoff(*)
+      integer ier
       real *8 src(2,*), srcsort(2,*), zll(2), blength
       real *8 targ(2,*), targsort(2,*)
 c-----Local variables
@@ -1557,6 +1557,8 @@ C
          iboxlev(i) = 0
          isrcladder(1,i) = 0
          isrcladder(2,i) = -1
+         itargladder(1,i) = 0
+         itargladder(2,i) = -1
       end do
 
       do i = 1,ns
@@ -1684,12 +1686,6 @@ c         write(*,*) 'ibox ', ibox, nnodes
             return
          endif
 
-         nnodes = itargladder(2,ibox)-itargladder(1,ibox) + 1
-         if (nnodes .gt. 0) then
-            localonoff(ibox) = 1
-         else
-            localonoff(ibox) = 0
-         endif
       enddo
 
 
@@ -2196,6 +2192,86 @@ c     assign points of this box to the appropriate child box
                if (ier2 .ne. 0) ier = 4
                isrcladder(1,ibox) = 0
                isrcladder(2,ibox) = -1
+            endif
+         enddo
+         xlength = xlength/2.0d0
+      enddo
+
+      return
+      end
+
+      subroutine lrt2d_ptsort_wc(levelbox,icolbox,irowbox,nboxes,nlev,
+     1     iparentbox, ichildbox, nblevel, iboxlev, istartlev,
+     2     src, srcsort, isrcsort,
+     3     isrcladder, ns, zll, blength, ier)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c     In this version, the ladder indicates which points are in the
+c     box or its children, children's children, etc.
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c-----Global variables
+      implicit none
+      real *8 xlength
+      integer levelbox(*), ns
+      integer nlev, nboxes
+      integer icolbox(*), irowbox(*)
+      integer iparentbox(*), ichildbox(4,*)
+      integer nblevel(0:1), iboxlev(*), istartlev(0:1)
+      integer isrcsort(*), isrcladder(2,*)
+      integer ier
+      real *8 src(2,*), srcsort(2,*), zll(2), blength
+c-----Local variables
+      integer i, ibox, iflag
+      integer j, istart, iend, l, jj
+      integer levflag, nnodes
+      integer ier2
+      real *8 xstart, xincrem
+      real *8, allocatable :: srctemp(:,:)
+      integer, allocatable :: itemp(:)
+      integer, allocatable :: itemp2(:)
+
+C
+      allocate(srctemp(2,ns))
+      allocate(itemp(ns))
+      allocate(itemp2(ns))
+
+      ier = 0
+
+      do i = 1, nboxes
+         isrcladder(1,i) = 0
+         isrcladder(2,i) = -1
+      end do
+
+      do i = 1,ns
+         isrcsort(i) = i
+         srcsort(1,i) = src(1,i)
+         srcsort(2,i) = src(2,i)
+      enddo
+
+c     initialize source ladder
+
+      istart = istartlev(0)
+      ibox = iboxlev(istart)
+      isrcladder(1,ibox) = 1
+      isrcladder(2,ibox) = ns
+
+      xlength = blength
+      do i = 0, nlev
+         istart = istartlev(i)
+         iend = istart + nblevel(i) - 1
+         do jj = istart, iend
+            ibox = iboxlev(jj)
+            nnodes = isrcladder(2,ibox)-isrcladder(1,ibox)+1
+            if (ichildbox(1,ibox) .gt. 0 .and. nnodes .gt. 0) then
+
+c     assign points of this box to the appropriate child box
+               ier2 = 0
+               call lrt2d_pts2child(ibox,isrcladder,isrcsort,
+     1              itemp,itemp2,iparentbox,ichildbox,irowbox,icolbox,
+     2              srcsort,srctemp,ier2,zll,xlength)
+               if (ier2 .ne. 0) ier = 4
+
             endif
          enddo
          xlength = xlength/2.0d0
