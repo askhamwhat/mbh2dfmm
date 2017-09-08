@@ -37,7 +37,7 @@ program mbhfmmtest
   real *8 hesstemp(3), hesstargtemp(3), err3(3)
   parameter (iseed = 281+3308004)
 
-  beta = 3.0d0
+  beta = 3.0d-10
 
   temp = hkrand(iseed)
   call prini(6,13)
@@ -121,7 +121,7 @@ program mbhfmmtest
         targ(2,i+nt/2) = yc+ (b-10.0d0*curvenrm)*sin(t) - .01d0
      enddo
   else
-     nt = 10000
+     nt = 1000
      do i = 1,nt
         targ(1,i) = zll(1) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
         targ(2,i) = zll(2) + 2*blength/4.0d0 + blength*hkrand(0)/4.0d0
@@ -268,7 +268,7 @@ program mbhfmmtest
 
   call prin2('TIME FOR DIRECT*',time2-time1,1)  
 
-  iprec = 2
+  iprec = 3
 
   call prinf('START FMM .........*',ifpot,0)
   

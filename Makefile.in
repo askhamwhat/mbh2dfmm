@@ -1,0 +1,68 @@
+SHELL = /bin/sh
+
+LDFLAGS = -shared
+
+SRC_DIR = src
+BIN_DIR = bin
+
+VPATH = $(SRC_DIR):$(BIN_DIR)
+
+LIBNAME  = mbhfmm2d.so
+FSOURCES = $(shell echo $(SRC_DIR)/*.f)
+OBJS = $(patsubst $(SRC_DIR)/%.f,%.o,$(FSOURCES))
+MODS = 
+
+GDB=
+OPENMP=
+PGFLAG= 
+
+ifeq ($(HOST),macosx)
+
+OBJSUF=o
+MODSUF=mod
+FC=gfortran
+FFLAGS=$(GDB) -O2 $(OPENMP) -fPIC
+
+else
+
+ifeq ($(HOST),linux-gfortran)
+
+# buggy compiler, do not use -O2
+OBJSUF=o
+MODSUF=mod
+FC=gfortran
+FFLAGS=$(GDB) -O3 $(OPENMP) -fPIC
+
+endif
+endif
+
+.PHONY : all lib profile release \
+  install install-strip uninstall clean distclean setup_dir
+
+setup_dir: 
+	@mkdir -p $(BIN_DIR)
+
+.f.$(OBJSUF): setup_dir
+	$(FC) $(FFLAGS) -c $< -o $(BIN_DIR)/$@
+
+.f90.$(OBJSUF): setup_dir
+	$(FC) $(FFLAGS) -c $< -o $(BIN_DIR)/$@
+
+all: lib
+
+lib: setup_dir $(MODS) $(OBJS) 
+	cd $(BIN_DIR); $(FC) $(LDFLAGS) -o $(LIBNAME) $(OBJS)
+
+install: lib
+	mkdir -p $(DESTDIR)$(PREFIX)/lib
+	cp $(BIN_DIR)/$(LIBNAME) $(DESTDIR)$(PREFIX)/lib/$(LIBNAME)
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/lib/$(LIBNAME)
+
+clean:
+	cd $(BIN_DIR); rm -f *
+
+distclean: clean
+	cd $(BIN_DIR); rm -f $(LIBNAME)
+
