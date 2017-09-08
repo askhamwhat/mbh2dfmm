@@ -1,7 +1,7 @@
 #!/bin/sh
 
 host=linux-gfortran
-prefix=/usr/local
+prefix=/usr
 debugsym=false
 openmpsym=true
 

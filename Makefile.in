@@ -4,10 +4,14 @@ LDFLAGS = -shared
 
 SRC_DIR = src
 BIN_DIR = bin
+TEST_DIR = test
+TMP_DIR = temp
 
 VPATH = $(SRC_DIR):$(BIN_DIR)
 
-LIBNAME  = mbhfmm2d.so
+LIBBASE = mbhfmm2d
+LIBNAME  = lib$(LIBBASE).so
+LIBLINK = -l$(LIBBASE)
 FSOURCES = $(shell echo $(SRC_DIR)/*.f)
 OBJS = $(patsubst $(SRC_DIR)/%.f,%.o,$(FSOURCES))
 MODS = 
@@ -41,6 +45,7 @@ endif
 
 setup_dir: 
 	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(TMP_DIR)
 
 .f.$(OBJSUF): setup_dir
 	$(FC) $(FFLAGS) -c $< -o $(BIN_DIR)/$@
@@ -62,7 +67,13 @@ uninstall:
 
 clean:
 	cd $(BIN_DIR); rm -f *
+	cd $(TMP_DIR); rm -f *
 
 distclean: clean
 	cd $(BIN_DIR); rm -f $(LIBNAME)
 
+tests: mbhfmmtest
+
+mbhfmmtest: lib install
+	$(FC) $(FFLAGS) -o $(TMP_DIR)/$@ $(TEST_DIR)/$@_dr.f90 $(LIBLINK)
+	cd $(TMP_DIR); ./$@
