@@ -1,3 +1,5 @@
 bin/*
 *.o
 temp/*
+# Fortran files
+*.o
