@@ -2,6 +2,7 @@
 
 host=linux-gfortran
 prefix=/usr
+
 debugsym=false
 openmpsym=true
 
@@ -45,10 +46,14 @@ echo 'generating makefile ...'
 echo "PREFIX = $prefix" >Makefile
 echo "HOST = $host" >>Makefile
 if $debugsym; then
-    echo 'dbg = yes' >>Makefile
+    echo 'DBGYN = yes' >>Makefile
+else
+    echo 'DBGYN = no' >>Makefile
 fi
 if $openmpsym; then
-    echo 'openmp = yes' >>Makefile
+    echo 'OPENMPYN = yes' >>Makefile
+else
+    echo 'OPENMPYN = no' >>Makefile
 fi
 cat Makefile.in >>Makefile
 echo 'configuration complete, type make to build.'

@@ -37,7 +37,7 @@ program mbhfmmtest
   real *8 hesstemp(3), hesstargtemp(3), err3(3)
   parameter (iseed = 281+3308004)
 
-  beta = 3.0d-10
+  beta = 1.0d-2
 
   temp = hkrand(iseed)
   call prini(6,13)
@@ -53,9 +53,9 @@ program mbhfmmtest
   ! Type of calculation 
 
   ifcharge = 0
-  ifdipole = 1
+  ifdipole = 0
   ifquad = 1
-  ifoct = 1
+  ifoct = 0
   ifpot = 1
   ifgrad = 1
   ifhess = 1
@@ -138,8 +138,8 @@ program mbhfmmtest
 
   do i = 1,ns
      t = (i-1)*h
-     charge(i) = dsdt(i)*h*cos(3*t)
-     dipstr(i) = dsdt(i)*h*sin(4*t)
+     charge(i) = beta**2*dsdt(i)*h*cos(3*t)
+     dipstr(i) = beta*dsdt(i)*h*sin(4*t)
      quadstr(i) = dsdt(i)*h*cos(4*t)
      dipvec(1:2,i) = (/ rnx(i), rny(i) /)
      ! d_n d_tau
@@ -268,7 +268,7 @@ program mbhfmmtest
 
   call prin2('TIME FOR DIRECT*',time2-time1,1)  
 
-  iprec = 3
+  iprec = 4
 
   call prinf('START FMM .........*',ifpot,0)
   
