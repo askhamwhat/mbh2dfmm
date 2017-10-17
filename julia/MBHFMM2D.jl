@@ -1,6 +1,9 @@
 include("BoxFMMType.jl")
 include("BoxFMMUtil.jl")
 
+# Load OpenMP library
+Libdl.dlopen("libgomp", Libdl.RTLD_GLOBAL)
+
 type MBHFMM2DParams
 
     # storage of parameters which
