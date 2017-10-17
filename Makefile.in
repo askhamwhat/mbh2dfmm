@@ -65,13 +65,6 @@ all: lib
 lib: setup_dir $(MODS) $(OBJS) 
 	cd $(BIN_DIR); $(FC) $(LDFLAGS) -o $(LIBNAME) $(OBJS)
 
-install: lib
-	sudo mkdir -p $(DESTDIR)$(PREFIX)/lib
-	sudo cp $(BIN_DIR)/$(LIBNAME) $(DESTDIR)$(PREFIX)/lib/$(LIBNAME)
-
-uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/lib/$(LIBNAME)
-
 clean:
 	cd $(BIN_DIR); rm -f *
 	cd $(TMP_DIR); rm -f *
@@ -84,6 +77,7 @@ tests: mbhfmmtest
 printflags: 
 	@echo $(DBG) $(OPENMP)
 
-mbhfmmtest: lib
-	$(FC) $(FFLAGS) -o $(TMP_DIR)/$@ $(TEST_DIR)/$@_dr.f90 $(LIBLINK)
+mbhfmmtest: setup_dir lib
+	cp $(BIN_DIR)/$(LIBNAME) $(TMP_DIR)/
+	cd $(TMP_DIR); $(FC) $(FFLAGS) -o $@ ../$(TEST_DIR)/$@_dr.f90 $(LIBNAME)
 	cd $(TMP_DIR); ./$@

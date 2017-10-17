@@ -1,6 +1,3 @@
-using PyPlot
-using PyCall
-
 type BoxTree2D
 
     # storage for the description of
@@ -105,7 +102,7 @@ function BoxTree2DMaxBoxes(maxboxes,maxlev)
 
 end
 
-function BoxTree2DMaxBoxesST!(src::Array{Float64,2},
+function BoxTree2DMaxBoxesST(src::Array{Float64,2},
                               targ::Array{Float64,2},
                               maxboxes;maxlev=45,
                               maxnodes=40,
@@ -296,8 +293,10 @@ ccall( (:lrt2d_ptsort_wc_,"../bin/libmbhfmm2d"),
               Ref{Float64},Ref{Float64},Ref{Int32}),
        levelbox,icolbox,irowbox,nboxes,nlev,
        iparentbox,ichildbox,nblevel,iboxlev,istartlev,
-       targ,targsort,itargsort,itargladder,ns,
+       targ,targsort,itargsort,itargladder,nt,
        zll,blength,ier)
+
+
 
 for i = 1:nboxes[1]
     localonoff[i] = 0
@@ -308,38 +307,4 @@ end
 
 return tree, sorted_pts, ier[1]
 
-end
-
-
-function plotBoxTree2D(tree::BoxTree2D)
-    @pyimport matplotlib.patches as patch
-
-    nlev = tree.nlev
-    nblevel = tree.nblevel
-    istartlev = tree.istartlev
-    blength = tree.blength
-    zll = tree.zll
-    icolbox = tree.icolbox
-    irowbox = tree.irowbox
-    iboxlev = tree.iboxlev
-
-    fig = figure()
-    ax = gca()
-    axis([zll[1],zll[1]+blength,zll[2],zll[2]+blength])
-    
-    for i = 1:nlev+1
-        h = blength*0.5^(i-1)
-        for j = 1:nblevel[i]
-            ind = istartlev[i]+j-1
-            ibox = iboxlev[ind]
-            icol = icolbox[ibox]
-            irow = irowbox[ibox]
-
-            rect = patch.Rectangle([zll[1]+h*(icol-1),zll[2]+h*(irow-1)],h,h,
-                                   linewidth=2,facecolor="none",edgecolor="black")
-            ax[:add_patch](rect)
-        end
-    end
-            
-    return
 end

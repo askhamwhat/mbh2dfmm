@@ -1,6 +1,7 @@
 
 
 include("BoxFMMType.jl")
+include("BoxFMMUtil.jl")
 
 using PyPlot
 
@@ -8,7 +9,7 @@ using PyPlot
 ## define source and target points
 
 ns = 100
-nt = 2000
+nt = 20
 
 # sources on an ellipse, targets inside
 
@@ -43,14 +44,16 @@ end
 maxboxes = 100000 # length of arrays allocated
 
 # no more than 30 sources and targets per box
-tree, sorted_pts, ier = BoxTree2DMaxBoxesST!(src,targ,maxboxes,
+tree, sorted_pts, ier = BoxTree2DMaxBoxesST(src,targ,maxboxes,
                                  maxnodes=30)
 
 @printf "built tree with %d boxes and %d levels\n" tree.nboxes tree.nlev
 
+println("sorted_pts ",sorted_pts.srcsort)
+
 @printf "plotting tree and points ...\n"
 
-plotBoxTree2D(tree)
+boxfmm2d_plot(tree)
 
 plot(src[1,:],src[2,:],"bo")
 plot(targ[1,:],targ[2,:],"rx")
