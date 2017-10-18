@@ -1,6 +1,15 @@
 using PyPlot
 using PyCall
 
+function boxfmm2d_formquadvec(der1::Array{Float64},
+                              der2::Array{Float64})
+    quadvec = zeros(Float64,3)
+    quadvec[1] = der1[1]*der2[1]
+    quadvec[2] = der1[1]*der2[2] + der1[2]*der2[1]
+    quadvec[3] = der1[2]*der2[2]
+    return quadvec
+end
+
 function boxfmm2d_formoctvec(der1::Array{Float64},
                           der2::Array{Float64},
                           der3::Array{Float64})
@@ -20,7 +29,7 @@ function boxfmm2d_formoctvec(der1::Array{Float64},
 end
 
 function boxfmm2d_booltoint32(in::Bool)
-    out = Array(Int32,1)
+    out = Array{Int32}(1)
     out[1] = 0
     if (in)
         out[1] = 1
