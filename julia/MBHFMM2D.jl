@@ -122,9 +122,9 @@ function MBHFMM2DStorage_init(fmmpars::MBHFMM2DParams,
 
     # initialize isave, dsave, csave to short arrays
 
-    isave = Array(Int32,1)
-    dsave = Array(Float64,1)
-    csave = Array(Complex{Float64},1)
+    isave = Array{Int32}(1)
+    dsave = Array{Float64}(1)
+    csave = Array{Complex{Float64}}(1)
 
     return MBHFMM2DStorage(tree,ifalltarg,sorted_pts,
                            chargesort,dipstrsort,
@@ -221,9 +221,9 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
 
     # allocate
 
-    fmmstor.isave = Array(Int32,lisave[1])
-    fmmstor.dsave = Array(Float64,ldsave[1])
-    fmmstor.csave = Array(Complex{Float64},lcsave[1])
+    fmmstor.isave = Array{Int32}(lisave[1])
+    fmmstor.dsave = Array{Float64}(ldsave[1])
+    fmmstor.csave = Array{Complex{Float64}}(lcsave[1])
 
     isave = fmmstor.isave
     dsave = fmmstor.dsave

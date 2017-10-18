@@ -58,11 +58,11 @@ function SortedPts2D(src_in::Array{Float64,2},
     ns = convert(Int32,ns)
     nt = convert(Int32,nt)
 
-    isrcsort = Array(Int32,ns)
-    itargsort = Array(Int32,nt)
+    isrcsort = Array{Int32}(ns)
+    itargsort = Array{Int32}(nt)
 
-    isrcladder = Array(Int32,2,maxboxes)
-    itargladder = Array(Int32,2,maxboxes)
+    isrcladder = Array{Int32}(2,maxboxes)
+    itargladder = Array{Int32}(2,maxboxes)
 
     return SortedPts2D(ns,nt,src,targ,srcsort,
                        targsort,isrcsort,
@@ -79,19 +79,19 @@ function BoxTree2DMaxBoxes(maxboxes,maxlev)
     
     nboxes = -1
     nlev = -1
-    levelbox = Array(Int32,maxboxes)
-    icolbox = Array(Int32,maxboxes)
-    irowbox = Array(Int32,maxboxes)
-    iparentbox = Array(Int32,maxboxes)
-    ichildbox = Array(Int32,4,maxboxes)
-    istartlev = Array(Int32,maxlev+1)
-    iboxlev = Array(Int32,maxboxes)    
-    icolleagbox = Array(Int32,9,maxboxes)
-    nblevel = Array(Int32,maxlev+1)
-    neighbors = Array(Int32,12,maxboxes)
-    nnbrs = Array(Int32,maxboxes)
-    localonoff = Array(Int32,maxboxes)
-    zll = Array(Float64,2)
+    levelbox = Array{Int32}(maxboxes)
+    icolbox = Array{Int32}(maxboxes)
+    irowbox = Array{Int32}(maxboxes)
+    iparentbox = Array{Int32}(maxboxes)
+    ichildbox = Array{Int32}(4,maxboxes)
+    istartlev = Array{Int32}(maxlev+1)
+    iboxlev = Array{Int32}(maxboxes)    
+    icolleagbox = Array{Int32}(9,maxboxes)
+    nblevel = Array{Int32}(maxlev+1)
+    neighbors = Array{Int32}(12,maxboxes)
+    nnbrs = Array{Int32}(maxboxes)
+    localonoff = Array{Int32}(maxboxes)
+    zll = Array{Float64}(2)
     blength = zero(Float64)
 
     return BoxTree2D(nboxes,nlev,levelbox,icolbox,
@@ -177,9 +177,9 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     zll = tree.zll
     blength = tree.blength
 
-    itemparray = Array(Int32,maxboxes)
-    nboxes = Array(Int32,1)
-    nlev = Array(Int32,1)
+    itemparray = Array{Int32}(maxboxes)
+    nboxes = Array{Int32}(1)
+    nlev = Array{Int32}(1)
 
     @printf "calling tree building routine ...\n"
     
