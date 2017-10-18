@@ -1,3 +1,6 @@
+# FMM for Modified Stokes, based on FMM for Modified Biharmonic
+
+include("MBHFMM2D.jl")
 
 const DEFAULT_MAXNODES = 30
 const DEFAULT_MAXBOXES = 100000

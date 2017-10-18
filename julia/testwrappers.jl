@@ -2,8 +2,7 @@ push!(LOAD_PATH, string(pwd(),"/../../code/src"))
 using ModifiedStokesSolver
 using Base.Test
 
-include("MBHFMM2D.jl")
-include("ModifiedStokesWrappers.jl")
+include("ModStokesFMM2D.jl")
 
 alpha = 20.0
 
