@@ -1,4 +1,7 @@
 
+const DEFAULT_MAXNODES = 30
+const DEFAULT_MAXBOXES = 100000
+
 function fmm_stokeslet_direct(src, targ, str, alpha)
     ns = size(src, 2)
     nt = size(targ, 2)
@@ -47,7 +50,8 @@ function fmm_stokeslet_direct(src, targ, str, alpha)
 end
 
 function fmm_stokeslet_targ(src, targ, str, alpha;
-                            maxnodes::Int=30, maxboxes::Int=100000)
+                            maxnodes::Int=DEFAULT_MAXNODES,
+                            maxboxes::Int=DEFAULT_MAXBOXES)
     ns = size(src, 2)
     nt = size(targ, 2)
     u = Array{Float64}(2, nt)
@@ -150,22 +154,17 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha)
     return u
 end
 
-function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
-                            maxnodes::Int=30, maxboxes::Int=100000)
+function fmm_stresslet_prep(src, targ, alpha;
+                            maxnodes::Int=DEFAULT_MAXNODES,
+                            maxboxes::Int=DEFAULT_MAXBOXES)
     ns = size(src, 2)
     nt = size(targ, 2)
-    u = Array{Float64}(2, nt)
-
     
     ifcharge = false
     ifdipole = true
     ifquad = false
     ifoct = true
     
-    ifpot = true
-    ifgrad = false
-    ifhess = false
-
     charge = Array{Float64}(0)
     dipstr = ones(ns)
     dipvec = Array{Float64}(2,ns)
@@ -174,16 +173,27 @@ function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
     octstr = ones(ns)
     octvec = Array{Float64}(4,ns)
     
-    pottarg = Array{Float64}(nt)
-    gradtarg = Array{Float64}(2,nt)
-    hesstarg = Array{Float64}(3,nt)
-
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
                              octvec, iprec = 3, ifalltarg = false)
     fmmstor = mbhfmm2d_form(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
-    
+
+    return fmmpars, fmmstor
+end
+
+function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
+                            fmmstor::MBHFMM2DStorage,
+                            fvec, nvec, alpha)
+    ns = fmmstor.sorted_pts.ns
+    nt = fmmstor.sorted_pts.nt
+    u = Array{Float64}(2, nt)    
+    ifpot = true
+    ifgrad = false
+    ifhess = false
+    pottarg = Array{Float64}(nt)
+    gradtarg = Array{Float64}(2,0)
+    hesstarg = Array{Float64}(3,0)    
     for j=1:2
         ej = zeros(2)
         ej[j] = 1.0
@@ -201,7 +211,17 @@ function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
         mbhfmm2d_targ!(fmmpars,fmmstor,targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         @. u[j, :] = pottarg
-    end
+    end    
+    return u
+end
     
+    
+function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
+                            maxnodes::Int=DEFAULT_MAXNODES,
+                            maxboxes::Int=DEFAULT_MAXBOXES)
+    fmmpars, fmmstor = fmm_stresslet_prep(src, targ, alpha,
+                                          maxnodes=maxnodes,
+                                          maxboxes=maxboxes)
+    u = fmm_stresslet_targ(fmmpars, fmmstor, fvec, nvec, alpha)
     return u
 end
