@@ -8,8 +8,8 @@ alpha = 20.0
 
 ## define source and target points
 
-ns = 50
-nt = 30
+ns = 500
+nt = 600
 
 srand(1)
 stokeslet_str = 1 - 2*rand(2,ns)

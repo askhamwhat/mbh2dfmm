@@ -138,21 +138,29 @@ function MBHFMM2DStorage_init(fmmpars::MBHFMM2DParams,
 
 end
     
-    
-
 function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
                        maxboxes::Int=-1)
+    # form tree
+    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+    # do work
+    mbhfmm2d_form(fmmpars, tree, sorted_pts)
+end
 
+function mbhfmm2d_tree(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
+                       maxboxes::Int=-1)
     if maxboxes < 0
         return [], 1
     end
-
-    # form tree    
     tree, sorted_pts, ier = BoxTree2DMaxBoxesST(fmmpars.src, fmmpars.targ, maxboxes,
                                                 maxnodes=maxnodes,
                                                 ifverbose=false,
                                                 ifalltarg=fmmpars.ifalltarg)
+    return tree, sorted_pts, ier
+end
 
+function mbhfmm2d_form(fmmpars::MBHFMM2DParams,
+                       tree::BoxTree2D,
+                       sorted_pts::SortedPts2D)
 
     # initialize storage
     

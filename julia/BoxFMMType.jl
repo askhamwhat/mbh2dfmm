@@ -223,7 +223,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
            iboxlev,istartlev,ifixflag)
 
     if (ifixflag[1] != 0)
-        iflag = Array(Int32,maxboxes)
+        iflag = Array{Int32}(maxboxes)
         @printf "enforcing level restriction ...\n"
         ccall( (:lrt2d_fix_,LIBMBHFMM2D),
                Void, (Ref{Int32},Ref{Int32},Ref{Int32},

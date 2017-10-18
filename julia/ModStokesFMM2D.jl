@@ -85,17 +85,18 @@ function fmm_stokeslet_targ(src, targ, str, alpha;
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
                              octvec, iprec = 3, ifalltarg = false)
-    fmmstor = mbhfmm2d_form(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
-    
+
+    # Form tree    
+    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+    # Compute components
     for j=1:2
         ej = zeros(2)
         ej[j] = 1.0
         for i=1:ns
-            # Put directly into sorted form
-            idx = fmmstor.sorted_pts.isrcsort[i]            
-            f = str[:,idx]
-            fmmstor.quadvecsort[:, i] = f[j]*[1.0, 0.0, 1.0] - boxfmm2d_formquadvec(ej, f)
+            f = str[:,i]
+            quadvec[:, i] = f[j]*[1.0, 0.0, 1.0] - boxfmm2d_formquadvec(ej, f)
         end
+        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)        
         mbhfmm2d_targ!(fmmpars,fmmstor,targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         @. u[j, :] = pottarg
@@ -134,8 +135,7 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha)
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = 3, ifalltarg = false)
-    
+                             octvec, iprec = 3, ifalltarg = false)    
     for j=1:2
         ej = zeros(2)
         ej[j] = 1.0
@@ -180,16 +180,16 @@ function fmm_stresslet_prep(src, targ, alpha;
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
                              octvec, iprec = 3, ifalltarg = false)
-    fmmstor = mbhfmm2d_form(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
-
-    return fmmpars, fmmstor
+    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+    return fmmpars, tree, sorted_pts
 end
 
 function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
-                            fmmstor::MBHFMM2DStorage,
+                            tree::BoxTree2D,
+                            sorted_pts::SortedPts2D,
                             fvec, nvec, alpha)
-    ns = fmmstor.sorted_pts.ns
-    nt = fmmstor.sorted_pts.nt
+    ns = sorted_pts.ns
+    nt = sorted_pts.nt
     u = Array{Float64}(2, nt)    
     ifpot = true
     ifgrad = false
@@ -201,16 +201,16 @@ function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
         ej = zeros(2)
         ej[j] = 1.0
         for i=1:ns
-            idx = fmmstor.sorted_pts.isrcsort[i]                        
-            f = fvec[:, idx]
-            n = nvec[:, idx]
+            f = fvec[:, i]
+            n = nvec[:, i]
             fdotn = f[1]*n[1] + f[2]*n[2]
-            fmmstor.octvecsort[:,i] = ( f[j]*[n[1], n[2], n[1], n[2]] +
-                             n[j]*[f[1], f[2], f[1], f[2]] +
-                             fdotn*[ej; ej] ) +
-                             -2*boxfmm2d_formoctvec(ej, f, n)
-            fmmstor.dipvecsort[:,i] = -alpha^2*fdotn*ej
+            fmmpars.octvec[:,i] = ( f[j]*[n[1], n[2], n[1], n[2]] +
+                                    n[j]*[f[1], f[2], f[1], f[2]] +
+                                    fdotn*[ej; ej] ) +
+                                    -2*boxfmm2d_formoctvec(ej, f, n)
+            fmmpars.dipvec[:,i] = -alpha^2*fdotn*ej
         end
+        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)                
         mbhfmm2d_targ!(fmmpars,fmmstor,fmmpars.targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         @. u[j, :] = pottarg
@@ -222,9 +222,9 @@ end
 function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
                             maxboxes::Int=DEFAULT_MAXBOXES)
-    fmmpars, fmmstor = fmm_stresslet_prep(src, targ, alpha,
-                                          maxnodes=maxnodes,
-                                          maxboxes=maxboxes)
-    u = fmm_stresslet_targ(fmmpars, fmmstor, fvec, nvec, alpha)
+    fmmpars, tree, sorted_pts = fmm_stresslet_prep(src, targ, alpha,
+                                                   maxnodes=maxnodes,
+                                                   maxboxes=maxboxes)
+    u = fmm_stresslet_targ(fmmpars, tree, sorted_pts, fvec, nvec, alpha)
     return u
 end
