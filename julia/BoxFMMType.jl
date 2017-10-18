@@ -183,7 +183,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
 
     @printf "calling tree building routine ...\n"
     
-    ccall( (:lrt2d_mktst_,"../bin/libmbhfmm2d"), Void,
+    ccall( (:lrt2d_mktst_,LIBMBHFMM2D), Void,
            (Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},
@@ -213,7 +213,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
 
     icolleagbox = tree.icolleagbox
 
-    ccall( (:lrt2d_restrict_,"../bin/libmbhfmm2d"),
+    ccall( (:lrt2d_restrict_,LIBMBHFMM2D),
            Void, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
@@ -225,7 +225,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     if (ifixflag[1] != 0)
         iflag = Array(Int32,maxboxes)
         @printf "enforcing level restriction ...\n"
-        ccall( (:lrt2d_fix_,"../bin/libmbhfmm2d"),
+        ccall( (:lrt2d_fix_,LIBMBHFMM2D),
                Void, (Ref{Int32},Ref{Int32},Ref{Int32},
                       Ref{Int32},Ref{Int32},Ref{Int32},
                       Ref{Int32},Ref{Int32},Ref{Int32},
@@ -242,7 +242,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
 
     @printf "testing tree ...\n"
 
-    ccall( (:lrt2d_testtree_,"../bin/libmbhfmm2d"),
+    ccall( (:lrt2d_testtree_,LIBMBHFMM2D),
            Void, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
@@ -251,7 +251,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
            irowbox,nboxes,nlev,nblevel,
            iboxlev,istartlev)
     
-    ccall( (:lrt2d_mkcolls_,"../bin/libmbhfmm2d"),
+    ccall( (:lrt2d_mkcolls_,LIBMBHFMM2D),
            Void, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
@@ -263,7 +263,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     neighbors = tree.neighbors
     nnbrs = tree.nnbrs
     
-    ccall( (:lrt2d_mknbrs_,"../bin/libmbhfmm2d"),
+    ccall( (:lrt2d_mknbrs_,LIBMBHFMM2D),
            Void, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32}),
@@ -272,7 +272,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
 
 @printf "sorting points into tree ...\n"
 
-ccall( (:lrt2d_ptsort_,"../bin/libmbhfmm2d"),
+ccall( (:lrt2d_ptsort_,LIBMBHFMM2D),
        Void, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},              
@@ -284,7 +284,7 @@ ccall( (:lrt2d_ptsort_,"../bin/libmbhfmm2d"),
        src,srcsort,isrcsort,isrcladder,ns,
        zll,blength,ier)
 
-ccall( (:lrt2d_ptsort_wc_,"../bin/libmbhfmm2d"),
+ccall( (:lrt2d_ptsort_wc_,LIBMBHFMM2D),
        Void, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},              

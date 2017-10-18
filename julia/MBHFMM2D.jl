@@ -1,3 +1,6 @@
+
+const LIBMBHFMM2D = string(Base.Filesystem.dirname(Base.source_path()), "/../bin/libmbhfmm2d")
+
 include("BoxFMMType.jl")
 include("BoxFMMUtil.jl")
 
@@ -198,7 +201,7 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
     ldsave = [convert(Int32,-1)]
     lcsave = [convert(Int32,-1)]    
 
-    ccall( (:mbhfmm2d_form_,"../bin/libmbhfmm2d"), Void,
+    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Void,
            (Ref{Float64},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -231,7 +234,7 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
 
     # form fmm
 
-    ccall( (:mbhfmm2d_form_,"../bin/libmbhfmm2d"), Void,
+    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Void,
            (Ref{Float64},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -312,7 +315,7 @@ function mbhfmm2d_targ!(fmmpars::MBHFMM2DParams,
     ifder31 = zeros(Int32,1)
     der3targ = zeros(Float64,4,1)
 
-    ccall( (:mbhfmm2d3_targ_,"../bin/libmbhfmm2d"), Void,
+    ccall( (:mbhfmm2d3_targ_,LIBMBHFMM2D), Void,
            (Ref{Float64},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -377,7 +380,7 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
 
     for i = 1:nt
 
-    ccall((:mbhpotgrad2dall_cdqo_,"../bin/libmbhfmm2d"),Void,
+    ccall((:mbhpotgrad2dall_cdqo_,LIBMBHFMM2D),Void,
           (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
            Ref{Float64},Ref{Int32},Ref{Float64},Ref{Float64},
            Ref{Int32},Ref{Float64},Ref{Float64},
