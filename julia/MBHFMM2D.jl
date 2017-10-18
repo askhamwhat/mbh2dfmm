@@ -147,9 +147,8 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
         return [], 1
     end
 
-    # form tree
-    
-    tree, sorted_pts, ier = BoxTree2DMaxBoxesST(src,targ,maxboxes,
+    # form tree    
+    tree, sorted_pts, ier = BoxTree2DMaxBoxesST(fmmpars.src, fmmpars.targ, maxboxes,
                                                 maxnodes=maxnodes,
                                                 ifverbose=false,
                                                 ifalltarg=fmmpars.ifalltarg)

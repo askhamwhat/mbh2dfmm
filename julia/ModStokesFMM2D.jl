@@ -211,7 +211,7 @@ function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
                              -2*boxfmm2d_formoctvec(ej, f, n)
             fmmstor.dipvecsort[:,i] = -alpha^2*fdotn*ej
         end
-        mbhfmm2d_targ!(fmmpars,fmmstor,targ,ifpot,pottarg,ifgrad,
+        mbhfmm2d_targ!(fmmpars,fmmstor,fmmpars.targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         @. u[j, :] = pottarg
     end    
