@@ -350,6 +350,108 @@ function mbhfmm2d_targ!(fmmpars::MBHFMM2DParams,
     return
 end
 
+function mbhfmm2d_srcsrc!(fmmpars::MBHFMM2DParams,
+                        fmmstor::MBHFMM2DStorage,
+                        ifpot::Bool,pottarg::Array{Float64,1},
+                        ifgrad::Bool,gradtarg::Array{Float64,2},
+                        ifhess::Bool,hesstarg::Array{Float64,2})
+
+    # temporary storage (you get the sorted versions from
+    # the fmm)
+
+    potsort = copy(pottarg)
+    gradsort = copy(gradtarg)
+    hesssort = copy(hesstarg)
+    
+    # unpack
+    
+    tree = fmmstor.tree
+    sorted_pts = fmmstor.sorted_pts
+    
+    lambda = fmmpars.lambda
+    ier1 = zeros(Int32,1)
+    nlev = tree.nlev
+    levelbox = tree.levelbox
+    iparentbox = tree.iparentbox
+    ichildbox = tree.ichildbox
+    icolbox = tree.icolbox
+    irowbox = tree.irowbox
+    nboxes = tree.nboxes
+    nblevel = tree.nblevel
+    iboxlev = tree.iboxlev
+    istartlev = tree.istartlev
+    zll = tree.zll
+    blength = tree.blength
+    ns = sorted_pts.ns
+    srcsort = sorted_pts.srcsort
+    isrcladder = sorted_pts.isrcladder
+    isrcsort = sorted_pts.isrcsort
+
+    ifcharge = fmmstor.ifcharge
+    chargesort = fmmstor.chargesort
+    ifdipole = fmmstor.ifdipole
+    dipstrsort = fmmstor.dipstrsort
+    dipvecsort = fmmstor.dipvecsort
+    ifquad = fmmstor.ifquad
+    quadstrsort = fmmstor.quadstrsort
+    quadvecsort = fmmstor.quadvecsort
+    ifoct = fmmstor.ifoct
+    octstrsort = fmmstor.octstrsort
+    octvecsort = fmmstor.octvecsort
+    isave = fmmstor.isave
+    dsave = fmmstor.dsave
+    csave = fmmstor.csave
+
+    ifpot1 = boxfmm2d_booltoint32(ifpot)
+    ifgrad1 = boxfmm2d_booltoint32(ifgrad)
+    ifhess1 = boxfmm2d_booltoint32(ifhess)
+
+    ifder31 = zeros(Int32,1)
+    der3targ = zeros(Float64,4,1)
+
+    ccall( (:mbhfmm2d3_srcsrc_,LIBMBHFMM2D), Void,
+           (Ref{Float64},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Float64},
+            Ref{Float64},Ref{Int32},Ref{Float64},Ref{Int32},
+            Ref{Int32},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Complex{Float64}},
+            Ref{Int32},Ref{Float64},Ref{Int32},
+            Ref{Float64},Ref{Int32},Ref{Float64},
+            Ref{Int32},Ref{Float64}),
+           lambda,ier1,nlev,levelbox,iparentbox,
+           ichildbox,icolbox,irowbox,nboxes,nblevel,
+           iboxlev,istartlev,zll,
+           blength,ns,srcsort,isrcladder,ifcharge,chargesort,
+           ifdipole,dipstrsort,dipvecsort,ifquad,
+           quadstrsort,quadvecsort,ifoct,octstrsort,
+           octvecsort,isave,dsave,csave,ifpot1,
+           potsort,ifgrad1,gradsort,ifhess1,hesssort,
+           ifder31,der3targ)
+
+    if ifpot
+        for i = 1:ns
+            pottarg[isrcsort[i]] = potsort[i]
+        end
+    end
+    if ifgrad
+        for i = 1:ns
+            gradtarg[:,isrcsort[i]] = gradsort[:,i]
+        end
+    end
+    if ifhess
+        for i = 1:ns
+            hesstarg[:,isrcsort[i]] = hesssort[:,i]
+        end
+    end
+    
+    return
+end
+
 function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
                           targ::Array{Float64,2},
                           ifpot::Bool,pottarg::Array{Float64,1},
@@ -404,6 +506,53 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
         hesstarg[:,i] = hesstemp        
 
     end
+
+    return
+end
+
+function mbhfmm2d_direct_self!(fmmpars::MBHFMM2DParams,
+                          ifpot::Bool,pottarg::Array{Float64,1},
+                          ifgrad::Bool,gradtarg::Array{Float64,2},
+                          ifhess::Bool,hesstarg::Array{Float64,2})
+
+
+    src = fmmpars.src
+    mtemp, ns = size(src)
+    ns = convert(Int32,ns)
+
+    lambda = fmmpars.lambda
+    ifcharge = boxfmm2d_booltoint32(fmmpars.ifcharge)
+    ifdipole = boxfmm2d_booltoint32(fmmpars.ifdipole)
+    ifquad = boxfmm2d_booltoint32(fmmpars.ifquad)
+    ifoct = boxfmm2d_booltoint32(fmmpars.ifoct)
+
+    charge = fmmpars.charge
+    dipstr = fmmpars.dipstr
+    dipvec = fmmpars.dipvec
+    quadstr = fmmpars.quadstr
+    quadvec = fmmpars.quadvec
+    octstr = fmmpars.octstr
+    octvec = fmmpars.octvec
+
+    ifpot1 = boxfmm2d_booltoint32(ifpot)
+    ifgrad1 = boxfmm2d_booltoint32(ifgrad)
+    ifhess1 = boxfmm2d_booltoint32(ifhess)
+
+    ifder31 = zeros(Int32,1)
+    der3targ = zeros(Float64,4,1)
+
+        
+    ccall((:mbhpotgrad2dall_cdqo3_self_,LIBMBHFMM2D),Void,
+          (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
+           Ref{Float64},Ref{Int32},Ref{Float64},Ref{Float64},
+           Ref{Int32},Ref{Float64},Ref{Float64},
+           Ref{Int32},Ref{Float64},Ref{Float64},
+           Ref{Int32},Ref{Float64},Ref{Int32},Ref{Float64},
+           Ref{Int32},Ref{Float64},Ref{Int32},Ref{Float64}),
+          lambda,src,ns,ifcharge,charge,ifdipole,dipstr,dipvec,
+          ifquad,quadstr,quadvec,ifoct,octstr,octvec,
+          ifpot1,pottarg,ifgrad1,gradtarg,
+          ifhess1,hesstarg,ifder31,der3targ)
 
     return
 end

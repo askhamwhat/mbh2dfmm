@@ -300,7 +300,7 @@ ccall( (:lrt2d_ptsort_wc_,LIBMBHFMM2D),
 
 for i = 1:nboxes[1]
     localonoff[i] = 0
-    if (itargladder[2,i]-itargladder[1,i]+1 > 0)
+    if (itargladder[2,i]-itargladder[1,i]+1 > 0 || ifalltarg)
         localonoff[i] = 1
     end
 end

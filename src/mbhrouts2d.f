@@ -633,6 +633,341 @@ c     local variables
       return
       end
 
+      subroutine mbhpotgrad2dall_cdqo3_self(beta,source,ns,ifcharge,
+     1     charge,ifdipole,dipstr,dipvec,ifquad,quadstr,quadvec,
+     2     ifoct,octstr,octvec,ifpot,pot,ifgrad,grad,
+     3     ifhess,hess,ifder3,der3)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c     This performs the sum over all charges at the source locations
+c     (excluding the infinite self interaction)
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      implicit none
+c     global variables
+      real *8 beta, source(2,*), charge(*), dipstr(*)
+      real *8 dipvec(2,*), quadstr(*), quadvec(3,*), octstr(*)
+      real *8 octvec(4,*)
+      real *8 pot(*), grad(2,*), hess(3,*), der3(4,*)
+      integer ns, ifcharge, ifdipole, ifquad, ifpot, ifgrad, ifhess
+      integer ifder3, ifoct
+c     local variables
+      integer i, ntermstemp, j
+      real *8 pottemp, gradtemp(2), hesstemp(3), der3temp(4)
+      real *8 pottemp2, gradtemp2(2), hesstemp2(3), der3temp2(4)      
+      real *8 rscale, rs2, pi, xtemp, ytemp, rtemp, tiny, dzero
+      complex *16 ima, hexpmbh(0:3), hexpy(0:3), zero
+      complex *16 hexpmbh2(0:3), hexpy2(0:3)
+      data ima /(0.0d0,1.0d0)/
+      data tiny / 1.0d-200 /
+      data dzero /0.0d0/
+      data zero /(0.0d0,0.0d0)/
+
+      pi = 4.0d0*datan(1.0d0)
+
+      if (ifpot .eq. 1) then
+         do i = 1,ns
+            pot(i) = dzero
+         enddo
+      endif
+      if (ifgrad .eq. 1) then
+         do i = 1,ns
+            grad(1,i) = dzero
+            grad(2,i) = dzero
+         enddo
+      endif
+      if (ifhess .eq. 1) then
+         do i = 1,ns
+            hess(1,i) = dzero
+            hess(2,i) = dzero
+            hess(3,i) = dzero
+         enddo
+      endif
+      if (ifder3 .eq. 1) then
+         do i = 1,ns
+            der3(1,i) = dzero
+            der3(2,i) = dzero
+            der3(3,i) = dzero
+            der3(4,i) = dzero
+         enddo
+      endif
+
+      ntermstemp = 0
+      if (ifdipole .eq. 1) ntermstemp = 1
+      if (ifquad .eq. 1) ntermstemp = 2
+      if (ifoct .eq. 1) ntermstemp = 3
+
+      do i = 1,ns
+         do j = i+1,ns
+            xtemp = source(1,j)-source(1,i)
+            ytemp = source(2,j)-source(2,i)
+            
+            rtemp = dsqrt(xtemp**2+ytemp**2)
+            
+            rscale = min(rtemp*beta,1.0d0)
+            if (rscale .lt. tiny) return
+            
+            rs2 = rscale*rscale
+            
+            hexpmbh(0) = zero
+            hexpmbh(1) = zero
+            hexpmbh(2) = zero
+            hexpmbh(3) = zero
+
+            hexpy(0) = zero
+            hexpy(1) = zero
+            hexpy(2) = zero
+            hexpy(3) = zero
+
+            hexpmbh2(0) = zero
+            hexpmbh2(1) = zero
+            hexpmbh2(2) = zero
+            hexpmbh2(3) = zero
+
+            hexpy2(0) = zero
+            hexpy2(1) = zero
+            hexpy2(2) = zero
+            hexpy2(3) = zero
+
+            if (ifcharge .eq. 1) then
+               hexpmbh(0) = hexpmbh(0) + charge(i)/(2.0d0*pi*beta**2)
+               hexpmbh2(0) = hexpmbh2(0) + charge(j)/(2.0d0*pi*beta**2)
+            endif
+
+            if (ifdipole .eq. 1) then
+               hexpmbh(1) = hexpmbh(1) + dipstr(i)*(dipvec(1,i)+
+     1              ima*dipvec(2,i))/(rscale*2.0d0*pi*beta)
+               hexpmbh2(1) = hexpmbh2(1) + dipstr(j)*(dipvec(1,j)+
+     1              ima*dipvec(2,j))/(rscale*2.0d0*pi*beta)
+            endif
+
+            if (ifquad .eq. 1) then
+               hexpmbh(2) = hexpmbh(2) + quadstr(i)*(quadvec(1,i)
+     1              +quadvec(2,i)*ima
+     2              -quadvec(3,i))/(rs2*4.0d0*pi)
+               hexpmbh2(2) = hexpmbh2(2) + quadstr(j)*(quadvec(1,j)
+     1              +quadvec(2,j)*ima
+     2              -quadvec(3,j))/(rs2*4.0d0*pi)
+
+               hexpy(0) = quadstr(i)*(quadvec(1,i)
+     1              +quadvec(3,i))/(4.0d0*pi)
+               hexpy2(0) = quadstr(j)*(quadvec(1,j)
+     1              +quadvec(3,j))/(4.0d0*pi)
+            endif
+
+            if (ifoct .eq. 1) then
+               hexpmbh(3) = hexpmbh(3) + beta*octstr(i)*(octvec(1,i) 
+     1              + ima*octvec(2,i) - octvec(3,i) 
+     2              -ima*octvec(4,i))/(rs2*rscale*8.0d0*pi)
+               hexpy(1) = hexpy(1) + beta*octstr(i)*(3.0d0*octvec(1,i)
+     1              + ima*octvec(2,i) + octvec(3,i) 
+     2              + 3.0d0*ima*octvec(4,i))/(rscale*8.0d0*pi)
+               hexpmbh2(3) = hexpmbh2(3) + beta*octstr(j)*(octvec(1,j) 
+     1              + ima*octvec(2,j) - octvec(3,j) 
+     2              -ima*octvec(4,j))/(rs2*rscale*8.0d0*pi)
+               hexpy2(1) = hexpy2(1) + beta*octstr(j)*(3.0d0*octvec(1,j)
+     1              + ima*octvec(2,j) + octvec(3,j) 
+     2              + 3.0d0*ima*octvec(4,j))/(rscale*8.0d0*pi)
+            endif
+
+            call mbh2dmpeval3(beta,rscale,source(1,j),hexpmbh2,hexpy2,
+     1           ntermstemp,source(1,i),pottemp,
+     2           ifgrad,gradtemp,ifhess,hesstemp,
+     3           ifder3,der3temp)
+
+            call mbh2dmpeval3(beta,rscale,source(1,i),hexpmbh,hexpy,
+     1           ntermstemp,source(1,j),pottemp2,
+     2           ifgrad,gradtemp2,ifhess,
+     3           hesstemp2,ifder3,der3temp2)
+
+            if (ifpot .eq. 1) then
+               pot(i) = pot(i)+pottemp
+               pot(j) = pot(j)+pottemp2
+            endif
+            if (ifgrad .eq. 1) then
+               grad(1,i) = grad(1,i)+gradtemp(1)
+               grad(2,i) = grad(2,i)+gradtemp(2)
+               grad(1,j) = grad(1,j)+gradtemp2(1)
+               grad(2,j) = grad(2,j)+gradtemp2(2)
+            endif
+            if (ifhess .eq. 1) then
+               hess(1,i) = hess(1,i)+hesstemp(1)
+               hess(2,i) = hess(2,i)+hesstemp(2)
+               hess(3,i) = hess(3,i)+hesstemp(3)
+               hess(1,j) = hess(1,j)+hesstemp2(1)
+               hess(2,j) = hess(2,j)+hesstemp2(2)
+               hess(3,j) = hess(3,j)+hesstemp2(3)
+            endif
+            if (ifder3 .eq. 1) then
+               der3(1,i) = der3(1,i)+der3temp(1)
+               der3(2,i) = der3(2,i)+der3temp(2)
+               der3(3,i) = der3(3,i)+der3temp(3)
+               der3(4,i) = der3(4,i)+der3temp(4)
+               der3(1,j) = der3(1,j)+der3temp2(1)
+               der3(2,j) = der3(2,j)+der3temp2(2)
+               der3(3,j) = der3(3,j)+der3temp2(3)
+               der3(4,j) = der3(4,j)+der3temp2(4)
+            endif
+         enddo         
+      enddo
+      
+      return
+      end
+
+      subroutine mbhpotgrad2dall_cdqo3_self_add(beta,source,ns,ifcharge,
+     1     charge,ifdipole,dipstr,dipvec,ifquad,quadstr,quadvec,
+     2     ifoct,octstr,octvec,ifpot,pot,ifgrad,grad,
+     3     ifhess,hess,ifder3,der3)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c     This performs the sum over all charges at the source locations
+c     (excluding the infinite self interaction)
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      implicit none
+c     global variables
+      real *8 beta, source(2,*), charge(*), dipstr(*)
+      real *8 dipvec(2,*), quadstr(*), quadvec(3,*), octstr(*)
+      real *8 octvec(4,*)
+      real *8 pot(*), grad(2,*), hess(3,*), der3(4,*)
+      integer ns, ifcharge, ifdipole, ifquad, ifpot, ifgrad, ifhess
+      integer ifder3, ifoct
+c     local variables
+      integer i, ntermstemp, j
+      real *8 pottemp, gradtemp(2), hesstemp(3), der3temp(4)
+      real *8 pottemp2, gradtemp2(2), hesstemp2(3), der3temp2(4)      
+      real *8 rscale, rs2, pi, xtemp, ytemp, rtemp, tiny, dzero
+      complex *16 ima, hexpmbh(0:3), hexpy(0:3), zero
+      complex *16 hexpmbh2(0:3), hexpy2(0:3)
+      data ima /(0.0d0,1.0d0)/
+      data tiny / 1.0d-200 /
+      data dzero /0.0d0/
+      data zero /(0.0d0,0.0d0)/
+
+      pi = 4.0d0*datan(1.0d0)
+
+      ntermstemp = 0
+      if (ifdipole .eq. 1) ntermstemp = 1
+      if (ifquad .eq. 1) ntermstemp = 2
+      if (ifoct .eq. 1) ntermstemp = 3
+
+      do i = 1,ns
+         do j = i+1,ns
+            xtemp = source(1,j)-source(1,i)
+            ytemp = source(2,j)-source(2,i)
+            
+            rtemp = dsqrt(xtemp**2+ytemp**2)
+            
+            rscale = min(rtemp*beta,1.0d0)
+            if (rscale .lt. tiny) return
+            
+            rs2 = rscale*rscale
+            
+            hexpmbh(0) = zero
+            hexpmbh(1) = zero
+            hexpmbh(2) = zero
+            hexpmbh(3) = zero
+
+            hexpy(0) = zero
+            hexpy(1) = zero
+            hexpy(2) = zero
+            hexpy(3) = zero
+
+            hexpmbh2(0) = zero
+            hexpmbh2(1) = zero
+            hexpmbh2(2) = zero
+            hexpmbh2(3) = zero
+
+            hexpy2(0) = zero
+            hexpy2(1) = zero
+            hexpy2(2) = zero
+            hexpy2(3) = zero
+
+            if (ifcharge .eq. 1) then
+               hexpmbh(0) = hexpmbh(0) + charge(i)/(2.0d0*pi*beta**2)
+               hexpmbh2(0) = hexpmbh2(0) + charge(j)/(2.0d0*pi*beta**2)
+            endif
+
+            if (ifdipole .eq. 1) then
+               hexpmbh(1) = hexpmbh(1) + dipstr(i)*(dipvec(1,i)+
+     1              ima*dipvec(2,i))/(rscale*2.0d0*pi*beta)
+               hexpmbh2(1) = hexpmbh2(1) + dipstr(j)*(dipvec(1,j)+
+     1              ima*dipvec(2,j))/(rscale*2.0d0*pi*beta)
+            endif
+
+            if (ifquad .eq. 1) then
+               hexpmbh(2) = hexpmbh(2) + quadstr(i)*(quadvec(1,i)
+     1              +quadvec(2,i)*ima
+     2              -quadvec(3,i))/(rs2*4.0d0*pi)
+               hexpmbh2(2) = hexpmbh2(2) + quadstr(j)*(quadvec(1,j)
+     1              +quadvec(2,j)*ima
+     2              -quadvec(3,j))/(rs2*4.0d0*pi)
+
+               hexpy(0) = quadstr(i)*(quadvec(1,i)
+     1              +quadvec(3,i))/(4.0d0*pi)
+               hexpy2(0) = quadstr(j)*(quadvec(1,j)
+     1              +quadvec(3,j))/(4.0d0*pi)
+            endif
+
+            if (ifoct .eq. 1) then
+               hexpmbh(3) = hexpmbh(3) + beta*octstr(i)*(octvec(1,i) 
+     1              + ima*octvec(2,i) - octvec(3,i) 
+     2              -ima*octvec(4,i))/(rs2*rscale*8.0d0*pi)
+               hexpy(1) = hexpy(1) + beta*octstr(i)*(3.0d0*octvec(1,i)
+     1              + ima*octvec(2,i) + octvec(3,i) 
+     2              + 3.0d0*ima*octvec(4,i))/(rscale*8.0d0*pi)
+               hexpmbh2(3) = hexpmbh2(3) + beta*octstr(j)*(octvec(1,j) 
+     1              + ima*octvec(2,j) - octvec(3,j) 
+     2              -ima*octvec(4,j))/(rs2*rscale*8.0d0*pi)
+               hexpy2(1) = hexpy2(1) + beta*octstr(j)*(3.0d0*octvec(1,j)
+     1              + ima*octvec(2,j) + octvec(3,j) 
+     2              + 3.0d0*ima*octvec(4,j))/(rscale*8.0d0*pi)
+            endif
+
+            call mbh2dmpeval3(beta,rscale,source(1,j),hexpmbh2,hexpy2,
+     1           ntermstemp,source(1,i),pottemp,
+     2           ifgrad,gradtemp,ifhess,hesstemp,
+     3           ifder3,der3temp)
+
+            call mbh2dmpeval3(beta,rscale,source(1,i),hexpmbh,hexpy,
+     1           ntermstemp,source(1,j),pottemp2,
+     2           ifgrad,gradtemp2,ifhess,
+     3           hesstemp2,ifder3,der3temp2)
+
+            if (ifpot .eq. 1) then
+               pot(i) = pot(i)+pottemp
+               pot(j) = pot(j)+pottemp2
+            endif
+            if (ifgrad .eq. 1) then
+               grad(1,i) = grad(1,i)+gradtemp(1)
+               grad(2,i) = grad(2,i)+gradtemp(2)
+               grad(1,j) = grad(1,j)+gradtemp2(1)
+               grad(2,j) = grad(2,j)+gradtemp2(2)
+            endif
+            if (ifhess .eq. 1) then
+               hess(1,i) = hess(1,i)+hesstemp(1)
+               hess(2,i) = hess(2,i)+hesstemp(2)
+               hess(3,i) = hess(3,i)+hesstemp(3)
+               hess(1,j) = hess(1,j)+hesstemp2(1)
+               hess(2,j) = hess(2,j)+hesstemp2(2)
+               hess(3,j) = hess(3,j)+hesstemp2(3)
+            endif
+            if (ifder3 .eq. 1) then
+               der3(1,i) = der3(1,i)+der3temp(1)
+               der3(2,i) = der3(2,i)+der3temp(2)
+               der3(3,i) = der3(3,i)+der3temp(3)
+               der3(4,i) = der3(4,i)+der3temp(4)
+               der3(1,j) = der3(1,j)+der3temp2(1)
+               der3(2,j) = der3(2,j)+der3temp2(2)
+               der3(3,j) = der3(3,j)+der3temp2(3)
+               der3(4,j) = der3(4,j)+der3temp2(4)
+            endif
+         enddo         
+      enddo
+      
+      return
+      end
+
       subroutine mbhpotgrad2dall_cdqo3_add(beta,source,ns,ifcharge,
      1     charge,ifdipole,dipstr,dipvec,ifquad,quadstr,quadvec,
      2     ifoct,octstr,octvec,target,ifpot,pot,ifgrad,grad,
