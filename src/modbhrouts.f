@@ -740,16 +740,17 @@ c     local variables
       z = eye*y
       ifder = 0
 
-      call h2dall(n+5,z,rscale,hvec,ifder,hder)
 
-      pih = 2.0d0*atan(1.0d0)
-
-      do j = 0,n+1,4
-         kvec(j) = -dimag(hvec(j))*pih
-         kvec(j+1) = -dreal(hvec(j+1))*pih
-         kvec(j+2) = dimag(hvec(j+2))*pih
-         kvec(j+3) = dreal(hvec(j+3))*pih
-      enddo
+      if (yh .gt. 1.0d0 .or. n .gt. 1 .or. ifders .eq. 1) then
+         call h2dall(n+4,z,rscale,hvec,ifder,hder)
+         pih = 2.0d0*atan(1.0d0)
+         do j = 0,n+1,4
+            kvec(j) = -dimag(hvec(j))*pih
+            kvec(j+1) = -dreal(hvec(j+1))*pih
+            kvec(j+2) = dimag(hvec(j+2))*pih
+            kvec(j+3) = dreal(hvec(j+3))*pih
+         enddo
+      endif
 
       if (yh .le. 1.0d0) then
 
