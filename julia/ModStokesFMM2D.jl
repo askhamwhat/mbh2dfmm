@@ -171,7 +171,13 @@ end
 function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
                             tree::BoxTree2D,
                             sorted_pts::SortedPts2D,
-                            fvec, nvec, alpha)
+                            fvec, nvec, alpha;
+                            quiet=true)
+    if quiet
+        # Suppress STDOUT output
+        TT = STDOUT
+        redirect_stdout()
+    end    
     ns = sorted_pts.ns
     nt = sorted_pts.nt
     u = Array{Float64}(2, nt)    
@@ -187,6 +193,10 @@ function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
         mbhfmm2d_targ!(fmmpars,fmmstor,fmmpars.targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         u[j, :] = pottarg
+    end
+    if quiet
+        # Restore  STDOUT output
+        redirect_stdout(TT)
     end    
     return u
 end
@@ -206,7 +216,13 @@ end
 function fmm_stresslet_self(fmmpars::MBHFMM2DParams,
                             tree::BoxTree2D,
                             sorted_pts::SortedPts2D,
-                            fvec, nvec, alpha)
+                            fvec, nvec, alpha;
+                            quiet=true)
+    if quiet
+        # Suppress STDOUT output
+        TT = STDOUT
+        redirect_stdout()
+    end
     ns = sorted_pts.ns
     nt = sorted_pts.nt
     u = Array{Float64}(2, nt)    
@@ -222,6 +238,10 @@ function fmm_stresslet_self(fmmpars::MBHFMM2DParams,
         mbhfmm2d_srcsrc!(fmmpars,fmmstor,ifpot,pottarg,ifgrad,
                          gradtarg,ifhess,hesstarg)        
         u[j, :] = pottarg
+    end
+    if quiet
+        # Restore  STDOUT output
+        redirect_stdout(TT)
     end    
     return u
 end
@@ -230,7 +250,8 @@ end
 
 function fmm_stresslet_prep(src, targ, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
-                            maxboxes::Int=DEFAULT_MAXBOXES)
+                            maxboxes::Int=DEFAULT_MAXBOXES,
+                            quiet=true)
     ns = size(src, 2)
     nt = size(targ, 2)
     
@@ -246,12 +267,21 @@ function fmm_stresslet_prep(src, targ, alpha;
     quadvec = Array{Float64}(3,0)
     octstr = ones(ns)
     octvec = Array{Float64}(4,ns)
-    
+
+    if quiet
+        # Suppress STDOUT output
+        TT = STDOUT
+        redirect_stdout()
+    end    
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
                              octvec, iprec = 3, ifalltarg = false)
     tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+    if quiet
+        # Restore  STDOUT output
+        redirect_stdout(TT)
+    end    
     return fmmpars, tree, sorted_pts
 end
 
