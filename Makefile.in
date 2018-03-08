@@ -28,7 +28,7 @@ LDFLAGS = -shared
 OBJSUF=o
 MODSUF=mod
 FC=gfortran
-FFLAGS=$(DBG) -O2 $(OPENMP) -fPIC
+FFLAGS=$(DBG) -O2 $(OPENMP) -fPIC -cpp
 
 else
 
@@ -42,7 +42,7 @@ LDFLAGS = -shared
 OBJSUF=o
 MODSUF=mod
 FC=gfortran
-FFLAGS=$(DBG) -O3 $(OPENMP) -fPIC
+FFLAGS=$(DBG) -O3 $(OPENMP) -fPIC -cpp #-DVERBOSE
 
 endif
 endif
