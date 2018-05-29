@@ -4,7 +4,7 @@ include("MBHFMM2D.jl")
 
 const DEFAULT_MAXNODES = 30
 const DEFAULT_MAXBOXES = 100000
-
+const DEFAULT_IPREC
 
 ## STOKESLET #########################################################
 
@@ -38,7 +38,7 @@ function fmm_stokeslet_direct(src, targ, str, alpha)
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = 3, ifalltarg = false)
+                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false)
     
     for j=1:2
         ej = zeros(2)
@@ -57,11 +57,15 @@ end
 
 function fmm_stokeslet_targ(src, targ, str, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
-                            maxboxes::Int=DEFAULT_MAXBOXES)
+                            maxboxes::Int=DEFAULT_MAXBOXES,
+                            ifgrad::Bool=false)
     ns = size(src, 2)
     nt = size(targ, 2)
     u = Array{Float64}(2, nt)
-
+    if ifgrad
+        u1grad = Array{Float64}(2, nt)
+        u2grad = Array{Float64}(2, nt)
+    end
     
     ifcharge = false
     ifdipole = false
@@ -69,7 +73,6 @@ function fmm_stokeslet_targ(src, targ, str, alpha;
     ifoct = false
     
     ifpot = true
-    ifgrad = false
     ifhess = false
 
     charge = Array{Float64}(0)
@@ -87,7 +90,7 @@ function fmm_stokeslet_targ(src, targ, str, alpha;
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = 3, ifalltarg = false)
+                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false)
 
     # Form tree    
     tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
@@ -99,13 +102,19 @@ function fmm_stokeslet_targ(src, targ, str, alpha;
             f = str[:,i]
             quadvec[:, i] = f[j]*[1.0, 0.0, 1.0] - boxfmm2d_formquadvec(ej, f)
         end
-        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)        
+        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)
+        if ifgrad
+            gradtarg = (j==1 ? u1grad : u2grad)
+        end        
         mbhfmm2d_targ!(fmmpars,fmmstor,targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         @. u[j, :] = pottarg
     end
-       
-    return u
+    if ifgrad
+        return u, u1grad, u2grad
+    else
+        return u
+    end
 end
 
 ## STRESSLET #########################################################
@@ -140,7 +149,7 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha;
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = 3, ifalltarg = false)    
+                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false)    
     for j=1:2
         fmm_stresslet_pack_density!(fmmpars, fvec, nvec, alpha, j)
         if self
@@ -160,35 +169,47 @@ end
 
 function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
-                            maxboxes::Int=DEFAULT_MAXBOXES)
+                            maxboxes::Int=DEFAULT_MAXBOXES,
+                            ifgrad::Bool=false)
     fmmpars, tree, sorted_pts = fmm_stresslet_prep(src, targ, alpha,
                                                    maxnodes=maxnodes,
                                                    maxboxes=maxboxes)
-    u = fmm_stresslet_targ(fmmpars, tree, sorted_pts, fvec, nvec, alpha)
+    u = fmm_stresslet_targ(fmmpars, tree, sorted_pts, fvec, nvec, alpha; ifgrad=ifgrad)
     return u
 end
 
 function fmm_stresslet_targ(fmmpars::MBHFMM2DParams,
                             tree::BoxTree2D,
                             sorted_pts::SortedPts2D,
-                            fvec, nvec, alpha)
+                            fvec, nvec, alpha;
+                            ifgrad::Bool=false)
     ns = sorted_pts.ns
     nt = sorted_pts.nt
-    u = Array{Float64}(2, nt)    
+    u = Array{Float64}(2, nt)
+    if ifgrad
+        u1grad = Array{Float64}(2, nt)
+        u2grad = Array{Float64}(2, nt)
+    end
     ifpot = true
-    ifgrad = false
     ifhess = false
     pottarg = Array{Float64}(nt)
     gradtarg = Array{Float64}(2,0)
     hesstarg = Array{Float64}(3,0)    
     for j=1:2
         fmm_stresslet_pack_density!(fmmpars, fvec, nvec, alpha, j)
-        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)                
+        fmmstor = mbhfmm2d_form(fmmpars, tree, sorted_pts)
+        if ifgrad
+            gradtarg = (j==1 ? u1grad : u2grad)
+        end
         mbhfmm2d_targ!(fmmpars,fmmstor,fmmpars.targ,ifpot,pottarg,ifgrad,
                        gradtarg,ifhess,hesstarg)        
         u[j, :] = pottarg
     end
-    return u
+    if ifgrad
+        return u, u1grad, u2grad
+    else
+        return u
+    end
 end
 
 ## FMM SELF
@@ -250,7 +271,7 @@ function fmm_stresslet_prep(src, targ, alpha;
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = 3, ifalltarg = false)
+                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false)
     tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
     return fmmpars, tree, sorted_pts
 end
