@@ -4,7 +4,7 @@ include("MBHFMM2D.jl")
 
 const DEFAULT_MAXNODES = 30
 const DEFAULT_MAXBOXES = 100000
-const DEFAULT_IPREC
+const DEFAULT_IPREC = 4
 
 ## STOKESLET #########################################################
 
@@ -120,10 +120,15 @@ end
 ## STRESSLET #########################################################
 
 function fmm_stresslet_direct(src, targ, fvec, nvec, alpha;
-                              self=false)
+                              self::Bool=false,
+                              ifgrad::Bool=false)
     ns = size(src, 2)
     nt = size(targ, 2)
     u = zeros(2, nt)
+    if ifgrad
+        u1grad = Array{Float64}(2, nt)
+        u2grad = Array{Float64}(2, nt)
+    end
     
     ifcharge = false
     ifdipole = true
@@ -131,7 +136,6 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha;
     ifoct = true
     
     ifpot = true
-    ifgrad = false
     ifhess = false
 
     charge = Array{Float64}(0)
@@ -152,6 +156,9 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha;
                              octvec, iprec = DEFAULT_IPREC, ifalltarg = false)    
     for j=1:2
         fmm_stresslet_pack_density!(fmmpars, fvec, nvec, alpha, j)
+        if ifgrad
+            gradtarg = (j==1 ? u1grad : u2grad)
+        end                
         if self
             fmmdirect = mbhfmm2d_direct_self!(fmmpars,ifpot,pottarg,ifgrad,
                                               gradtarg,ifhess,hesstarg)
@@ -161,8 +168,11 @@ function fmm_stresslet_direct(src, targ, fvec, nvec, alpha;
         end       
         u[j, :] = pottarg
     end
-    
-    return u
+    if ifgrad
+        return u, u1grad, u2grad
+    else
+        return u
+    end
 end
 
 ## FMM TARGET
