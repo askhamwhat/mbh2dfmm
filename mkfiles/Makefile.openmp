@@ -1,3 +1,7 @@
+PREFIX = /usr
+HOST = linux-gfortran
+DBGYN = no
+OPENMPYN = yes
 SHELL = /bin/sh
 
 LDFLAGS = -shared

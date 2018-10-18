@@ -26,12 +26,19 @@ for arg in "$@"; do
     --disable-openmp)
         openmpsym=false;;
 
+    --list-systems)
+	echo 'valid host names: '
+	echo ' --host=macosx'
+	echo ' --host=linux-gfortran'
+	exit 0
+	;;
+
     --help)
         echo 'usage: ./configure [options]'
         echo 'options:'
         echo '  --prefix=<path>: installation prefix'
-        echo '  --host=<system-name>: installation prefix'
-	echo '  --list-systems: print valid system names'
+        echo '  --host=<system-name>:  prefix'
+	echo '  --list-systems: print valid host names'
         echo '  --enable-debug: include debug symbols'
         echo '  --disable-debug: do not include debug symbols'
 	echo '  --enable-openmp: include openmp symbols'
