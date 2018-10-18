@@ -37,7 +37,7 @@ program mbhfmmtest
   real *8 hesstemp(3), hesstargtemp(3), err3(3)
   parameter (iseed = 281+3308004)
 
-  beta = 1.0d-2
+  beta = 1.0d-15
 
   temp = hkrand(iseed)
   call prini(6,13)

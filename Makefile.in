@@ -7,13 +7,16 @@ BIN_DIR = bin
 TEST_DIR = test
 TMP_DIR = temp
 
-VPATH = $(SRC_DIR):$(BIN_DIR)
+VPATH = $(SRC_DIR):$(BIN_DIR):$(TEST_DIR)
 
 LIBBASE = mbhfmm2d
 LIBNAME  = lib$(LIBBASE).so
 LIBLINK = -l$(LIBBASE)
 FSOURCES = $(shell echo $(SRC_DIR)/*.f)
 OBJS = $(patsubst $(SRC_DIR)/%.f,%.o,$(FSOURCES))
+TESTFSOURCES = $(shell echo $(TEST_DIR)/*.f)	
+TESTOBJS = $(patsubst $(TEST_DIR)/%.f,%.o,$(TESTFSOURCES))
+LTESTOBJS = $(patsubst $(TEST_DIR)/%.f,../$(BIN_DIR)/%.o,$(TESTFSOURCES))
 MODS = 
 
 DBG=
@@ -77,7 +80,7 @@ tests: mbhfmmtest
 printflags: 
 	@echo $(DBG) $(OPENMP)
 
-mbhfmmtest: setup_dir lib
+mbhfmmtest: setup_dir lib $(TESTOBJS)
 	cp $(BIN_DIR)/$(LIBNAME) $(TMP_DIR)/
-	cd $(TMP_DIR); $(FC) $(FFLAGS) -o $@ ../$(TEST_DIR)/$@_dr.f90 $(LIBNAME)
+	cd $(TMP_DIR); $(FC) $(FFLAGS) -o $@ ../$(TEST_DIR)/$@_dr.f90 $(LTESTOBJS) $(LIBNAME)
 	cd $(TMP_DIR); ./$@

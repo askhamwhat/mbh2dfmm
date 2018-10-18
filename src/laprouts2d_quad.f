@@ -1,6 +1,11 @@
+cc Copyright (C) 2009-2012: Leslie Greengard, Travis Askham, and Zydrunas Gimbutas
+cc Contact: greengard@cims.nyu.edu
+cc 
+cc This software is being released under a modified FreeBSD license
+cc (see licenses folder in home directory). 
 c
 c
-c      This file contains the basic subroutines for 
+c      This file contains some basic subroutines for 
 c      forming and evaluating multipole (partial wave) expansions
 c      in two dimensions.
 c

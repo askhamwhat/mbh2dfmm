@@ -1,3 +1,8 @@
+cc Copyright (C) 2017: Travis Askham, Leslie Greengard, Zydrunas Gimbutas
+cc email: askhamwhat@gmail.com      
+cc 
+cc This software is being released under a modified FreeBSD license
+cc (see licenses folder in home directory). 
 C***********************************************************************
       subroutine mbhfmm2d_form(beta,ier,iprec,nlev,levelbox,iparentbox, 
      1     ichildbox, icolbox, irowbox, nboxes, nblevel, iboxlev, 

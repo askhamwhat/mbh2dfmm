@@ -1,16 +1,8 @@
-cc Copyright (C) 2010-2011: Leslie Greengard and Zydrunas Gimbutas
+cc Copyright (C) 2009-2012: Leslie Greengard and Zydrunas Gimbutas
 cc Contact: greengard@cims.nyu.edu
 cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
+cc This software is being released under a modified FreeBSD license
+cc (see licenses folder in home directory). 
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c    $Date: 2011-04-25 22:45:52 -0400 (Mon, 25 Apr 2011) $
@@ -113,6 +105,11 @@ c		    ifhess = 1 -> do compute
 c-----------------------------------------------------------------------
 c     OUTPUT:
 c
+c     lused  :    amount of work space w that is actually used
+c     ier    :    error return code
+c                     ier=0  successful execution
+c                     ier=8  insufficient work space (not implemented yet)
+c                     ier=16 ztarg too close to center
 c     pot    :    potential at ztarg
 c     grad   :    gradient at ztarg (if requested)
 c     hess   :    hessian at ztarg (if requested)
@@ -171,150 +168,202 @@ c
 c
         if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
 c
-           allocate(mpolex(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoley(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-c
-           do i=-nterms-1,nterms+1
-              mpolex(i)=0
-              mpoley(i)=0
-           enddo
-           do i=-nterms,nterms
-             if (i .le. 0) then
-             mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
-             mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
-             endif
-             if( i .gt. 0 ) then
-                mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
-                mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
-             endif
-             if( i .ge. 0 ) then
-                mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
-                mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
-             endif
-             if( i .lt. 0 ) then
-                mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
-                mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
-             endif
-           enddo
+        allocate(mpolex(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
         endif
+        allocate(mpoley(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+c
+        do i=-nterms-1,nterms+1
+        mpolex(i)=0
+        mpoley(i)=0
+        enddo
+        do i=-nterms,nterms
+ccc        mpolex(i-1)=mpolex(i-1)+zk/2*mpole(i)
+ccc        mpolex(i+1)=mpolex(i+1)-zk/2*mpole(i)
+ccc        mpoley(i-1)=mpoley(i-1)+zk/2*mpole(i)*(ima)
+ccc        mpoley(i+1)=mpoley(i+1)+zk/2*mpole(i)*(ima)
+        if( i .le. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
+        enddo
+
+        endif
+c
 c
         if( ifhess .eq. 1 ) then
-           allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-c
-           do i=-nterms-2,nterms+2
-              mpolexx(i)=0
-              mpolexy(i)=0
-              mpoleyy(i)=0
-           enddo
-           do i=-nterms+1,nterms+1
-              if( i .le. 0 ) then 
-                 mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
-              endif
-              if( i .gt. 0 ) then
-                 mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
-              endif
-              if( i .ge. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
-              endif
-              if( i .lt. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
-              endif
-           enddo
+
+        allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+
+        do i=-nterms-2,nterms+2
+        mpolexx(i)=0
+        mpolexy(i)=0
+        mpoleyy(i)=0
+        enddo
+        do i=-nterms+1,nterms+1
+ccc        mpolexx(i-1)=mpolexx(i-1)+zk/2*mpolex(i)
+ccc        mpolexx(i+1)=mpolexx(i+1)-zk/2*mpolex(i)
+ccc        mpolexy(i-1)=mpolexy(i-1)+zk/2*mpolex(i)*(ima)
+ccc        mpolexy(i+1)=mpolexy(i+1)+zk/2*mpolex(i)*(ima)
+ccc        mpoleyy(i-1)=mpoleyy(i-1)+zk/2*mpoley(i)*(ima)
+ccc        mpoleyy(i+1)=mpoleyy(i+1)+zk/2*mpoley(i)*(ima)
+        if( i .le. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
+        if( i .gt. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
+        if( i .ge. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
+        if( i .lt. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
+        enddo
+
         endif
 c
 c
+
         pot=hval(0)*mpole(0)
         do n=1,nterms
-           pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
+ccc        pot=pot+hval(n)*mpole(n)*exp(ima*n*theta)
+ccc        pot=pot+hval(n)*mpole(-n)*exp(ima*(-n)*theta)*(-1)**n
+        pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
         enddo
         pot=pot/ima4
 c
+c
         if( ifgrad .eq. 1 ) then
-           grad(1)=0
-           grad(2)=0
+
+        grad(1)=0
+        grad(2)=0
+
+        if( 1 .eq. 2 ) then
+        rx=zdiff(1)
+        ry=zdiff(2)
+        ctheta=rx/r
+        stheta=ry/r
+
+        grad(1)=-hval(1)/rscale*zk*ctheta *mpole(0)
+        grad(2)=-hval(1)/rscale*zk*stheta *mpole(0)
+        do n=1,nterms
+c        grad(1)=grad(1)+hder(n)*zk*ctheta *(mpole(n)*exp(ima*n*theta)+
+c     $     mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)
+c        grad(1)=grad(1)+hval(n)*(mpole(n)*exp(ima*n*theta)-
+c     $     mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*(ima*n)*(-stheta/r)
+c        grad(1)=grad(1)+(hder(n)*zk*ctheta + hval(n)*(ima*n)*(-stheta/r))
+c     $     *(mpole(n)*exp(ima*n*theta))
+c        grad(1)=grad(1)+(hder(n)*zk*ctheta - hval(n)*(ima*n)*(-stheta/r))
+c     $     *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)
+        grad(1)=grad(1)+(-hval(n+1)/rscale*exp(ima*theta)+
+     $     (exp(-ima*theta))*hval(n-1)*rscale)
+     $     *(mpole(n)*exp(ima*n*theta))*zk/2
+        grad(1)=grad(1)+(-hval(n+1)/rscale*exp(-ima*theta) +
+     $     hval(n-1)*rscale*exp(ima*theta))
+     $     *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*zk/2
+c        grad(2)=grad(2)+hder(n)*zk*stheta *(mpole(n)*exp(ima*n*theta)+
+c     $     mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)
+c        grad(2)=grad(2)+hval(n)*(mpole(n)*exp(ima*n*theta)-
+c     $     mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*(ima*n)*(+ctheta/r)
+c        grad(2)=grad(2)+(hder(n)*zk*stheta + hval(n)*(ima*n)*(+ctheta/r))
+c     $     *(mpole(n)*exp(ima*n*theta))
+c        grad(2)=grad(2)+(hder(n)*zk*stheta - hval(n)*(ima*n)*(+ctheta/r))
+c     $     *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)
+        grad(2)=grad(2)+(-hval(n+1)/rscale*exp(ima*theta)-
+     $     hval(n-1)*rscale*exp(-ima*theta))
+     $     *(mpole(n)*exp(ima*n*theta))*zk*(-ima)/2
+        grad(2)=grad(2)+(-hval(n+1)/rscale*exp(-ima*theta)-
+     $     hval(n-1)*rscale*exp(ima*theta))
+     $     *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*zk*(ima)/2
+        enddo
+        grad(1)=grad(1)/ima4
+        grad(2)=grad(2)/ima4
+        write(*,*) grad(1), grad(2)
+        endif
 c
-           if( 1 .eq. 2 ) then
-              rx=zdiff(1)
-              ry=zdiff(2)
-              ctheta=rx/r
-              stheta=ry/r
-              grad(1)=-hval(1)/rscale*zk*ctheta *mpole(0)
-              grad(2)=-hval(1)/rscale*zk*stheta *mpole(0)
-              do n=1,nterms
-                 grad(1)=grad(1)+(-hval(n+1)/rscale*exp(ima*theta)+
-     $              (exp(-ima*theta))*hval(n-1)*rscale)
-     $              *(mpole(n)*exp(ima*n*theta))*zk/2
-                 grad(1)=grad(1)+(-hval(n+1)/rscale*exp(-ima*theta) +
-     $              hval(n-1)*rscale*exp(ima*theta))
-     $              *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*zk/2
-                 grad(2)=grad(2)+(-hval(n+1)/rscale*exp(ima*theta)-
-     $              hval(n-1)*rscale*exp(-ima*theta))
-     $              *(mpole(n)*exp(ima*n*theta))*zk*(-ima)/2
-                 grad(2)=grad(2)+(-hval(n+1)/rscale*exp(-ima*theta)-
-     $              hval(n-1)*rscale*exp(ima*theta))
-     $              *(mpole(-n)*exp(ima*(-n)*theta)*(-1)**n)*zk*(ima)/2
-              enddo
-              grad(1)=grad(1)/ima4
-              grad(2)=grad(2)/ima4
-              write(*,*) grad(1), grad(2)
-           endif
-c
-           grad(1)=hval(0) *mpolex(0)
-           grad(2)=hval(0) *mpoley(0)
-           do n=1,nterms+1
-              grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
-              grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
-           enddo
-           grad(1)=grad(1)/ima4
-           grad(2)=grad(2)/ima4
+        grad(1)=hval(0) *mpolex(0)
+        grad(2)=hval(0) *mpoley(0)
+        do n=1,nterms+1
+c        grad(1)=grad(1)+hval(n)*mpolex(n)*exp(ima*n*theta)
+c        grad(1)=grad(1)+hval(n)*mpolex(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        grad(2)=grad(2)+hval(n)*mpoley(n)*exp(ima*n*theta)
+c        grad(2)=grad(2)+hval(n)*mpoley(-n)*exp(ima*(-n)*theta)*(-1)**n
+        grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
+        grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
+        enddo
+        grad(1)=grad(1)/ima4
+        grad(2)=grad(2)/ima4
+
         endif
 c
 c
         if( ifhess .eq. 1 ) then
-           hess(1)=0
-           hess(2)=0
-           hess(3)=0
-c
-           hess(1)=hval(0) *mpolexx(0)
-           hess(2)=hval(0) *mpolexy(0)
-           hess(3)=hval(0) *mpoleyy(0)
-           do n=1,nterms+2
-              hess(1)=hess(1)+
-     $                mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
-              hess(2)=hess(2)+
-     $                mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
-              hess(3)=hess(3)+
-     $                mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
-           enddo
-           hess(1)=hess(1)/ima4
-           hess(2)=hess(2)/ima4
-           hess(3)=hess(3)/ima4
+
+        hess(1)=0
+        hess(2)=0
+        hess(3)=0
+
+        hess(1)=hval(0) *mpolexx(0)
+        hess(2)=hval(0) *mpolexy(0)
+        hess(3)=hval(0) *mpoleyy(0)
+        do n=1,nterms+2
+c        hess(1)=hess(1)+hval(n)*mpolexx(n)*exp(ima*n*theta)
+c        hess(1)=hess(1)+hval(n)*mpolexx(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        hess(2)=hess(2)+hval(n)*mpolexy(n)*exp(ima*n*theta)
+c        hess(2)=hess(2)+hval(n)*mpolexy(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        hess(3)=hess(3)+hval(n)*mpoleyy(n)*exp(ima*n*theta)
+c        hess(3)=hess(3)+hval(n)*mpoleyy(-n)*exp(ima*(-n)*theta)*(-1)**n
+        hess(1)=hess(1)+mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
+        hess(2)=hess(2)+mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
+        hess(3)=hess(3)+mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
+        enddo
+
+        hess(1)=hess(1)/ima4
+        hess(2)=hess(2)/ima4
+        hess(3)=hess(3)/ima4
+
         endif
+c
 c
         return
         end
@@ -355,6 +404,11 @@ c		    ifhess = 1 -> do compute
 c-----------------------------------------------------------------------
 c     OUTPUT:
 c
+c     lused  :    amount of work space w that is actually used
+c     ier    :    error return code
+c                     ier=0  successful execution
+c                     ier=8  insufficient work space (not implemented yet)
+c                     ier=16 ztarg too close to center
 c     pot    :    potential at ztarg
 c     grad   :    gradient at ztarg (if requested)
 c     hess   :    hessian at ztarg (if requested)
@@ -363,38 +417,39 @@ c-----------------------------------------------------------------------
 c
         complex *16 zk,pot,grad(2),hess(3),mpole(-nterms:nterms)
         real *8 center(2),ztarg(2),zdiff(2)
-        integer itt,iisc
-        parameter (itt=30000)
-        parameter (iisc=1000)
-        complex *16, allocatable :: cw1(:)
-        integer, allocatable :: iscale1(:)
-        complex *16 ima,ima4,ima4inv,z,zmull,zmullinv,zfac
-        complex *16 cw(0:itt)
-        integer iscale(0:iisc)
+c
+        complex *16, allocatable :: jval(:)
+        complex *16, allocatable :: jder(:)
+        integer, allocatable :: iscale(:)
+c
+        complex *16, allocatable :: mpolex(:)
+        complex *16, allocatable :: mpoley(:)
+c
+        complex *16, allocatable :: mpolexx(:)
+        complex *16, allocatable :: mpolexy(:)
+        complex *16, allocatable :: mpoleyy(:)
+c
+        complex *16, allocatable :: mptemp(:)
+c
+        complex *16 ima,ima4,z
         data ima/(0.0d0,1.0d0)/
 c
 c
         ima4=-4*ima
-        ima4inv=ima/4
 c
-        lwfjs = nterms+5 + 4*nterms + 100
-        ijval = 0
-        ijder = ijval + lwfjs+4
-        imptemp = ijder + lwfjs+4
-        impolex = imptemp + 2*nterms+5
-        impoley = impolex + 2*nterms+3
-        impolexx = impoley + 2*nterms+3
-        impolexy = impolexx + 2*nterms+5
-        impoleyy = impolexy + 2*nterms+5
-        itot = impoleyy + 2*nterms+5
-c
-        ialloc = 0
-        if ((itot.gt.itt).or.(lwfjs+10 .gt. iisc)) then
-           allocate(cw1(0:itot))
-           allocate(iscale1(0:lwfjs+10))
-           ialloc = 1
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
+        allocate(jval(0:lwfjs+10), stat=ier)
+        if (ier.eq.1) then
+          return
         endif
-ccc        write(6,*) ' ialloc is ',ialloc
+        allocate(jder(0:lwfjs+10), stat=ier)
+        if (ier.eq.1) then
+          return
+        endif
+        allocate(iscale(0:lwfjs+10), stat=ier)
+        if (ier.eq.1) then
+          return
+        endif
 c
         zdiff(1)=ztarg(1)-center(1)
         zdiff(2)=ztarg(2)-center(2)
@@ -402,33 +457,176 @@ c
 c
         z=zk*r
         ifder=0
-        if (ialloc.eq.0) then 
-           call jfuns2d(ier,nterms+3,z,rscale,cw(ijval),ifder,cw(ijder),
+        call jfuns2d(ier,nterms+3,z,rscale,jval,ifder,jder,
      1        lwfjs,iscale,ntop)
-           call mkmptemp(cw(imptemp),theta,cw(ijval),nterms)
-           if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
-              call mkmpole12(cw(impolex),cw(impoley),
-     1             ifhess,cw(impolexx),cw(impolexy),
-     2             cw(impoleyy),mpole,zk,rscale,nterms)
-           endif
-           call taevals(mpole,cw(impolex),cw(impoley),cw(impolexx),
-     1             cw(impolexy),cw(impoleyy),rscale,nterms,
-     2             cw(ijval),cw(imptemp),pot,ifgrad,grad,
-     3             ifhess,hess,ima4inv)
-        else
-           call jfuns2d(ier,nterms+3,z,rscale,cw1(ijval),ifder,
-     1        cw1(ijder),lwfjs,iscale,ntop)
-           call mkmptemp(cw1(imptemp),theta,cw1(ijval),nterms)
-           if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
-              call mkmpole12(cw1(impolex),cw1(impoley),
-     1             ifhess,cw1(impolexx),cw1(impolexy),
-     2             cw1(impoleyy),mpole,zk,rscale,nterms)
-           endif
-           call taevals(mpole,cw1(impolex),cw1(impoley),cw1(impolexx),
-     1             cw1(impolexy),cw1(impoleyy),rscale,nterms,
-     2             cw1(ijval),cw1(imptemp),pot,ifgrad,grad,
-     3             ifhess,hess,ima4inv)
+c
+        allocate(mptemp(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+          return
         endif
+c
+        mptemp(0)=jval(0)
+        do n=1,nterms+2
+        mptemp(n)=jval(n)*exp(ima*n*theta)
+        mptemp(-n)=jval(n)*exp(ima*(-n)*theta)*(-1)**n
+        enddo
+c
+c
+        if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
+c
+        allocate(mpolex(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoley(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+c
+        do i=-nterms-1,nterms+1
+        mpolex(i)=0
+        mpoley(i)=0
+        enddo
+        do i=-nterms,nterms
+ccc        mpolex(i-1)=mpolex(i-1)+zk/2*mpole(i)
+ccc        mpolex(i+1)=mpolex(i+1)-zk/2*mpole(i)
+ccc        mpoley(i-1)=mpoley(i-1)+zk/2*mpole(i)*(ima)
+ccc        mpoley(i+1)=mpoley(i+1)+zk/2*mpole(i)*(ima)
+        if( i .le. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
+        enddo
+
+        endif
+c
+c
+        if( ifhess .eq. 1 ) then
+
+        allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+
+        do i=-nterms-2,nterms+2
+        mpolexx(i)=0
+        mpolexy(i)=0
+        mpoleyy(i)=0
+        enddo
+        do i=-nterms+1,nterms+1
+ccc        mpolexx(i-1)=mpolexx(i-1)+zk/2*mpolex(i)
+ccc        mpolexx(i+1)=mpolexx(i+1)-zk/2*mpolex(i)
+ccc        mpolexy(i-1)=mpolexy(i-1)+zk/2*mpolex(i)*(ima)
+ccc        mpolexy(i+1)=mpolexy(i+1)+zk/2*mpolex(i)*(ima)
+ccc        mpoleyy(i-1)=mpoleyy(i-1)+zk/2*mpoley(i)*(ima)
+ccc        mpoleyy(i+1)=mpoleyy(i+1)+zk/2*mpoley(i)*(ima)
+        if( i .le. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
+        if( i .gt. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
+        if( i .ge. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
+        if( i .lt. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
+        enddo
+
+        endif
+c
+c
+
+        pot=jval(0)*mpole(0)
+        do n=1,nterms
+ccc        pot=pot+jval(n)*mpole(n)*exp(ima*n*theta)
+ccc        pot=pot+jval(n)*mpole(-n)*exp(ima*(-n)*theta)*(-1)**n
+        pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
+        enddo
+        pot=pot/ima4
+c
+c
+        if( ifgrad .eq. 1 ) then
+
+        grad(1)=0
+        grad(2)=0
+
+        grad(1)=jval(0) *mpolex(0)
+        grad(2)=jval(0) *mpoley(0)
+        do n=1,nterms+1
+c        grad(1)=grad(1)+jval(n)*mpolex(n)*exp(ima*n*theta)
+c        grad(1)=grad(1)+jval(n)*mpolex(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        grad(2)=grad(2)+jval(n)*mpoley(n)*exp(ima*n*theta)
+c        grad(2)=grad(2)+jval(n)*mpoley(-n)*exp(ima*(-n)*theta)*(-1)**n
+        grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
+        grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
+        enddo
+        grad(1)=grad(1)/ima4
+        grad(2)=grad(2)/ima4
+
+        endif
+c
+c
+        if( ifhess .eq. 1 ) then
+
+        hess(1)=0
+        hess(2)=0
+        hess(3)=0
+
+        hess(1)=jval(0) *mpolexx(0)
+        hess(2)=jval(0) *mpolexy(0)
+        hess(3)=jval(0) *mpoleyy(0)
+        do n=1,nterms+2
+c        hess(1)=hess(1)+jval(n)*mpolexx(n)*exp(ima*n*theta)
+c        hess(1)=hess(1)+jval(n)*mpolexx(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        hess(2)=hess(2)+jval(n)*mpolexy(n)*exp(ima*n*theta)
+c        hess(2)=hess(2)+jval(n)*mpolexy(-n)*exp(ima*(-n)*theta)*(-1)**n
+c        hess(3)=hess(3)+jval(n)*mpoleyy(n)*exp(ima*n*theta)
+c        hess(3)=hess(3)+jval(n)*mpoleyy(-n)*exp(ima*(-n)*theta)*(-1)**n
+        hess(1)=hess(1)+mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
+        hess(2)=hess(2)+mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
+        hess(3)=hess(3)+mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
+        enddo
+
+        hess(1)=hess(1)/ima4
+        hess(2)=hess(2)/ima4
+        hess(3)=hess(3)/ima4
+
+        endif
+c
 c
         return
         end
@@ -471,6 +669,11 @@ c		    ifhess = 1 -> do compute
 c-----------------------------------------------------------------------
 c     OUTPUT:
 c
+c     lused  :    amount of work space w that is actually used
+c     ier    :    error return code
+c                     ier=0  successful execution
+c                     ier=8  insufficient work space (not implemented yet)
+c                     ier=16 ztarg too close to center
 c     pot    :    potential at ztarg
 c     grad   :    gradient at ztarg (if requested)
 c     hess   :    hessian at ztarg (if requested)
@@ -511,89 +714,151 @@ c
         endif
 c
         if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
-           allocate(mpolex(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoley(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
 c
-           do i=-nterms-1,nterms+1
-              mpolex(i)=0
-              mpoley(i)=0
-           enddo
-           z1scale = zk/2/rscale
-           z2scale = zk/2*rscale
-           z3scale = zk/2/rscale * ima
-           z4scale = zk/2*rscale * ima
-           do i=-nterms,nterms
-              if( i .le. 0 ) then
-                 mpolex(i-1)=mpolex(i-1)+z1scale*mpole(i)
-                 mpoley(i-1)=mpoley(i-1)+z3scale*mpole(i)
-              endif
-              if( i .gt. 0 ) then
-                 mpolex(i-1)=mpolex(i-1)+z2scale*mpole(i)
-                 mpoley(i-1)=mpoley(i-1)+z4scale*mpole(i)
-              endif
-              if( i .ge. 0 ) then
-                 mpolex(i+1)=mpolex(i+1)-z1scale*mpole(i)
-                 mpoley(i+1)=mpoley(i+1)+z3scale*mpole(i)
-              endif
-              if( i .lt. 0 ) then
-                 mpolex(i+1)=mpolex(i+1)-z2scale*mpole(i)
-                 mpoley(i+1)=mpoley(i+1)+z4scale*mpole(i)
-              endif
-           enddo
+        allocate(mpolex(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
         endif
+        allocate(mpoley(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+c
+        do i=-nterms-1,nterms+1
+        mpolex(i)=0
+        mpoley(i)=0
+        enddo
+
+        z1scale = zk/2/rscale
+        z2scale = zk/2*rscale
+        z3scale = zk/2/rscale * ima
+        z4scale = zk/2*rscale * ima
+        do i=-nterms,nterms
+ccc        mpolex(i-1)=mpolex(i-1)+zk/2*mpole(i)
+ccc        mpolex(i+1)=mpolex(i+1)-zk/2*mpole(i)
+ccc        mpoley(i-1)=mpoley(i-1)+zk/2*mpole(i)*(ima)
+ccc        mpoley(i+1)=mpoley(i+1)+zk/2*mpole(i)*(ima)
+c        if( i .le. 0 ) 
+c     $     mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
+c        if( i .gt. 0 ) 
+c     $     mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
+c        if( i .ge. 0 ) 
+c     $     mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
+c        if( i .lt. 0 ) 
+c     $     mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
+c        if( i .le. 0 ) 
+c     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
+c        if( i .gt. 0 ) 
+c     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
+c        if( i .ge. 0 ) 
+c     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
+c        if( i .lt. 0 ) 
+c     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+z1scale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+z2scale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-z1scale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-z2scale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+z3scale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+z4scale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+z3scale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+z4scale*mpole(i)
+        enddo
+
+        endif
+c
 c
         if( ifhess .eq. 1 ) then
-           allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-c
-           do i=-nterms-2,nterms+2
-              mpolexx(i)=0
-              mpolexy(i)=0
-              mpoleyy(i)=0
-           enddo
-           z1scale = zk/2/rscale
-           z2scale = zk/2*rscale
-           z3scale = zk/2/rscale * ima
-           z4scale = zk/2*rscale * ima
-           do i=-nterms+1,nterms+1
-              if( i .le. 0 ) then
-                 mpolexx(i-1)=mpolexx(i-1)+z1scale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+z3scale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+z3scale*mpoley(i)
-              endif
-              if( i .gt. 0 ) then
-                 mpolexx(i-1)=mpolexx(i-1)+z2scale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+z4scale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+z4scale*mpoley(i)
-              endif
-              if( i .ge. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-z1scale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+z3scale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+z3scale*mpoley(i)
-              endif
-              if( i .lt. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-z2scale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+z4scale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+z4scale*mpoley(i)
-              endif
-           enddo
+
+        allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
         endif
+        allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+
+        do i=-nterms-2,nterms+2
+        mpolexx(i)=0
+        mpolexy(i)=0
+        mpoleyy(i)=0
+        enddo
+
+        z1scale = zk/2/rscale
+        z2scale = zk/2*rscale
+        z3scale = zk/2/rscale * ima
+        z4scale = zk/2*rscale * ima
+        do i=-nterms+1,nterms+1
+ccc        mpolexx(i-1)=mpolexx(i-1)+zk/2*mpolex(i)
+ccc        mpolexx(i+1)=mpolexx(i+1)-zk/2*mpolex(i)
+ccc        mpolexy(i-1)=mpolexy(i-1)+zk/2*mpolex(i)*(ima)
+ccc        mpolexy(i+1)=mpolexy(i+1)+zk/2*mpolex(i)*(ima)
+ccc        mpoleyy(i-1)=mpoleyy(i-1)+zk/2*mpoley(i)*(ima)
+ccc        mpoleyy(i+1)=mpoleyy(i+1)+zk/2*mpoley(i)*(ima)
+c        if( i .le. 0 ) 
+c     $     mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
+c        if( i .gt. 0 ) 
+c     $     mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
+c        if( i .ge. 0 ) 
+c     $     mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
+c        if( i .lt. 0 ) 
+c     $     mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
+c        if( i .le. 0 ) 
+c     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
+c        if( i .gt. 0 ) 
+c     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
+c        if( i .ge. 0 ) 
+c     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
+c        if( i .lt. 0 ) 
+c     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
+c        if( i .le. 0 ) 
+c     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
+c        if( i .gt. 0 ) 
+c     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
+c        if( i .ge. 0 ) 
+c     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
+c        if( i .lt. 0 ) 
+c     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
+        if( i .le. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+z1scale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+z2scale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-z1scale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-z2scale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+z3scale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+z4scale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+z3scale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+z4scale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+z3scale*mpoley(i)
+        if( i .gt. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+z4scale*mpoley(i)
+        if( i .ge. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+z3scale*mpoley(i)
+        if( i .lt. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+z4scale*mpoley(i)
+        enddo
+
+        endif
+c
 c
         allocate(mptemp(-nterms-2:nterms+2), stat=ier)
         if (ier.eq.1) then
@@ -601,73 +866,99 @@ c
         endif
 c
         do k=1,ntarg
-           zdiff(1)=ztarg(1,k)-center(1)
-           zdiff(2)=ztarg(2,k)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call h2dall(nterms+3,z,rscale,hval,ifder,hder)
 c
-           mptemp(0)=hval(0)
-           zmul=exp(ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul
-           ztemp2=-zinv
-           do j = 1,nterms+2
-              mptemp( j) = ztemp1*hval(j)
-              mptemp(-j) = ztemp2*hval(j)
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
-           if( ifpot .eq. 1 ) then
-              pot=0
-              pot=hval(0)*mpole(0)
-              do n=1,nterms
-                 pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
-              enddo
-              pot=pot*ima4inv
-              pot1(k)=pot1(k)+pot
-           endif
-           if( ifgrad .eq. 1 ) then
-              grad(1)=0
-              grad(2)=0
-              grad(1)=hval(0) *mpolex(0)
-              grad(2)=hval(0) *mpoley(0)
-              do n=1,nterms+1
-                 grad(1)=grad(1)+
-     $                   mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
-                 grad(2)=grad(2)+
-     $                   mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
-              enddo
-              grad(1)=grad(1)*ima4inv
-              grad(2)=grad(2)*ima4inv
-              grad1(1,k)=grad1(1,k)+grad(1)
-              grad1(2,k)=grad1(2,k)+grad(2)
+        zdiff(1)=ztarg(1,k)-center(1)
+        zdiff(2)=ztarg(2,k)-center(2)
+        call h2cart2polar(zdiff,r,theta)
 c
-           endif
-           if( ifhess .eq. 1 ) then
-              hess(1)=0
-              hess(2)=0
-              hess(3)=0
-              hess(1)=hval(0) *mpolexx(0)
-              hess(2)=hval(0) *mpolexy(0)
-              hess(3)=hval(0) *mpoleyy(0)
-              do n=1,nterms+2
-                 hess(1)=hess(1)+
-     $                   mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
-                 hess(2)=hess(2)+
-     $                   mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
-                 hess(3)=hess(3)+
-     $                   mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
-              enddo
-              hess(1)=hess(1)*ima4inv
-              hess(2)=hess(2)*ima4inv
-              hess(3)=hess(3)*ima4inv
-              hess1(1,k)=hess1(1,k)+hess(1)
-              hess1(2,k)=hess1(2,k)+hess(2)
-              hess1(3,k)=hess1(3,k)+hess(3)
-           endif
+        z=zk*r
+        ifder=0
+        call h2dall(nterms+3,z,rscale,hval,ifder,hder)
+c
+c        mptemp(0)=hval(0)
+c        do n=1,nterms+2
+c        mptemp(n)=hval(n)*exp(ima*n*theta)
+c        mptemp(-n)=hval(n)*exp(ima*(-n)*theta)*(-1)**n
+c        enddo
+c
+        mptemp(0)=hval(0)
+        zmul=exp(ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul
+        ztemp2=-zinv
+        do j = 1,nterms+2
+        mptemp( j) = ztemp1*hval(j)
+        mptemp(-j) = ztemp2*hval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+c
+c
+        if( ifpot .eq. 1 ) then
+c
+        pot=0
+c
+        pot=hval(0)*mpole(0)
+c
+        do n=1,nterms
+ccc        pot=pot+hval(n)*mpole(n)*exp(ima*n*theta)
+ccc        pot=pot+hval(n)*mpole(-n)*exp(ima*(-n)*theta)*(-1)**n
+        pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
+        enddo
+        pot=pot*ima4inv
+c
+        pot1(k)=pot1(k)+pot
+c
+        endif
+c
+c
+        if( ifgrad .eq. 1 ) then
+
+        grad(1)=0
+        grad(2)=0
+
+        grad(1)=hval(0) *mpolex(0)
+        grad(2)=hval(0) *mpoley(0)
+        do n=1,nterms+1
+        grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
+        grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
+        enddo
+        grad(1)=grad(1)*ima4inv
+        grad(2)=grad(2)*ima4inv
+c
+        grad1(1,k)=grad1(1,k)+grad(1)
+        grad1(2,k)=grad1(2,k)+grad(2)
+c
+        endif
+c
+c
+        if( ifhess .eq. 1 ) then
+
+        hess(1)=0
+        hess(2)=0
+        hess(3)=0
+
+        hess(1)=hval(0) *mpolexx(0)
+        hess(2)=hval(0) *mpolexy(0)
+        hess(3)=hval(0) *mpoleyy(0)
+        do n=1,nterms+2
+        hess(1)=hess(1)+mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
+        hess(2)=hess(2)+mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
+        hess(3)=hess(3)+mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
+        enddo
+
+        hess(1)=hess(1)*ima4inv
+        hess(2)=hess(2)*ima4inv
+        hess(3)=hess(3)*ima4inv
+c
+        hess1(1,k)=hess1(1,k)+hess(1)
+        hess1(2,k)=hess1(2,k)+hess(2)
+        hess1(3,k)=hess1(3,k)+hess(3)
+
+        endif
+c
+        enddo
+c
         return
         end
 c
@@ -709,6 +1000,7 @@ c		    ifhess = 1 -> do compute
 c-----------------------------------------------------------------------
 c     OUTPUT:
 c
+c     lused  :    amount of work space w that is actually used
 c     ier    :    error return code
 c                     ier=0  successful execution
 c                     ier=8  insufficient work space (not implemented yet)
@@ -744,7 +1036,7 @@ c
         ima4=-4*ima
         ima4inv=ima/4
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -759,157 +1051,250 @@ c
         endif
 c
         if( ifgrad .eq. 1 .or. ifhess .eq. 1 ) then
-           allocate(mpolex(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoley(-nterms-1:nterms+1), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
 c
-           do i=-nterms-1,nterms+1
-              mpolex(i)=0
-              mpoley(i)=0
-           enddo
-           z1scale = zk/2*rscale
-           z2scale = zk/2/rscale
-           z3scale = zk/2*rscale * ima
-           z4scale = zk/2/rscale * ima
-           do i=-nterms,nterms
-              if( i .le. 0 ) then
-                 mpolex(i-1)=mpolex(i-1)+z1scale*mpole(i)
-                 mpoley(i-1)=mpoley(i-1)+z3scale*mpole(i)
-              endif
-              if( i .gt. 0 ) then
-                 mpolex(i-1)=mpolex(i-1)+z2scale*mpole(i)
-                 mpoley(i-1)=mpoley(i-1)+z4scale*mpole(i)
-              endif
-              if( i .ge. 0 ) then
-                 mpolex(i+1)=mpolex(i+1)-z1scale*mpole(i)
-                 mpoley(i+1)=mpoley(i+1)+z3scale*mpole(i)
-              endif
-              if( i .lt. 0 ) then
-                 mpolex(i+1)=mpolex(i+1)-z2scale*mpole(i)
-                 mpoley(i+1)=mpoley(i+1)+z4scale*mpole(i)
-              endif
-           enddo
+        allocate(mpolex(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoley(-nterms-1:nterms+1), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+c
+        do i=-nterms-1,nterms+1
+        mpolex(i)=0
+        mpoley(i)=0
+        enddo
+
+        z1scale = zk/2*rscale
+        z2scale = zk/2/rscale
+        z3scale = zk/2*rscale * ima
+        z4scale = zk/2/rscale * ima
+        do i=-nterms,nterms
+ccc        mpolex(i-1)=mpolex(i-1)+zk/2*mpole(i)
+ccc        mpolex(i+1)=mpolex(i+1)-zk/2*mpole(i)
+ccc        mpoley(i-1)=mpoley(i-1)+zk/2*mpole(i)*(ima)
+ccc        mpoley(i+1)=mpoley(i+1)+zk/2*mpole(i)*(ima)
+c        if( i .le. 0 ) 
+c     $     mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
+c        if( i .gt. 0 ) 
+c     $     mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
+c        if( i .ge. 0 ) 
+c     $     mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
+c        if( i .lt. 0 ) 
+c     $     mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
+c        if( i .le. 0 ) 
+c     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
+c        if( i .gt. 0 ) 
+c     $     mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
+c        if( i .ge. 0 ) 
+c     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
+c        if( i .lt. 0 ) 
+c     $     mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+z1scale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpolex(i-1)=mpolex(i-1)+z2scale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-z1scale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpolex(i+1)=mpolex(i+1)-z2scale*mpole(i)
+        if( i .le. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+z3scale*mpole(i)
+        if( i .gt. 0 ) 
+     $     mpoley(i-1)=mpoley(i-1)+z4scale*mpole(i)
+        if( i .ge. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+z3scale*mpole(i)
+        if( i .lt. 0 ) 
+     $     mpoley(i+1)=mpoley(i+1)+z4scale*mpole(i)
+        enddo
+
+
         endif
 c
 c
         if( ifhess .eq. 1 ) then
-           allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-           allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
-           if (ier.eq.1) then
-           return
-           endif
-c
-           do i=-nterms-2,nterms+2
-              mpolexx(i)=0
-              mpolexy(i)=0
-              mpoleyy(i)=0
-           enddo
-           z1scale = zk/2*rscale
-           z2scale = zk/2/rscale
-           z3scale = zk/2*rscale * ima
-           z4scale = zk/2/rscale * ima
-           do i=-nterms+1,nterms+1
-              if( i .le. 0 ) then
-                 mpolexx(i-1)=mpolexx(i-1)+z1scale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+z3scale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+z3scale*mpoley(i)
-              endif
-              if( i .gt. 0 ) then
-                 mpolexx(i-1)=mpolexx(i-1)+z2scale*mpolex(i)
-                 mpolexy(i-1)=mpolexy(i-1)+z4scale*mpolex(i)
-                 mpoleyy(i-1)=mpoleyy(i-1)+z4scale*mpoley(i)
-              endif
-              if( i .ge. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-z1scale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+z3scale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+z3scale*mpoley(i)
-              endif
-              if( i .lt. 0 ) then
-                 mpolexx(i+1)=mpolexx(i+1)-z2scale*mpolex(i)
-                 mpolexy(i+1)=mpolexy(i+1)+z4scale*mpolex(i)
-                 mpoleyy(i+1)=mpoleyy(i+1)+z4scale*mpoley(i)
-              endif
-          enddo
+
+        allocate(mpolexx(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpolexy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+        allocate(mpoleyy(-nterms-2:nterms+2), stat=ier)
+        if (ier.eq.1) then
+        return
+        endif
+
+        do i=-nterms-2,nterms+2
+        mpolexx(i)=0
+        mpolexy(i)=0
+        mpoleyy(i)=0
+        enddo
+
+        z1scale = zk/2*rscale
+        z2scale = zk/2/rscale
+        z3scale = zk/2*rscale * ima
+        z4scale = zk/2/rscale * ima
+        do i=-nterms+1,nterms+1
+ccc        mpolexx(i-1)=mpolexx(i-1)+zk/2*mpolex(i)
+ccc        mpolexx(i+1)=mpolexx(i+1)-zk/2*mpolex(i)
+ccc        mpolexy(i-1)=mpolexy(i-1)+zk/2*mpolex(i)*(ima)
+ccc        mpolexy(i+1)=mpolexy(i+1)+zk/2*mpolex(i)*(ima)
+ccc        mpoleyy(i-1)=mpoleyy(i-1)+zk/2*mpoley(i)*(ima)
+ccc        mpoleyy(i+1)=mpoleyy(i+1)+zk/2*mpoley(i)*(ima)
+c        if( i .le. 0 ) 
+c     $     mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
+c        if( i .gt. 0 ) 
+c     $     mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
+c        if( i .ge. 0 ) 
+c     $     mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
+c        if( i .lt. 0 ) 
+c     $     mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
+c        if( i .le. 0 ) 
+c     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
+c        if( i .gt. 0 ) 
+c     $     mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
+c        if( i .ge. 0 ) 
+c     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
+c        if( i .lt. 0 ) 
+c     $     mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
+c        if( i .le. 0 ) 
+c     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
+c        if( i .gt. 0 ) 
+c     $     mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
+c        if( i .ge. 0 ) 
+c     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
+c        if( i .lt. 0 ) 
+c     $     mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
+        if( i .le. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+z1scale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexx(i-1)=mpolexx(i-1)+z2scale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-z1scale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexx(i+1)=mpolexx(i+1)-z2scale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+z3scale*mpolex(i)
+        if( i .gt. 0 ) 
+     $     mpolexy(i-1)=mpolexy(i-1)+z4scale*mpolex(i)
+        if( i .ge. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+z3scale*mpolex(i)
+        if( i .lt. 0 ) 
+     $     mpolexy(i+1)=mpolexy(i+1)+z4scale*mpolex(i)
+        if( i .le. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+z3scale*mpoley(i)
+        if( i .gt. 0 ) 
+     $     mpoleyy(i-1)=mpoleyy(i-1)+z4scale*mpoley(i)
+        if( i .ge. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+z3scale*mpoley(i)
+        if( i .lt. 0 ) 
+     $     mpoleyy(i+1)=mpoleyy(i+1)+z4scale*mpoley(i)
+        enddo
+
         endif
 c
+c               
         allocate(mptemp(-nterms-2:nterms+2), stat=ier)
         if (ier.eq.1) then
           return
         endif
 c
         do k=1,ntarg
-           zdiff(1)=ztarg(1,k)-center(1)
-           zdiff(2)=ztarg(2,k)-center(2)
-           call h2cart2polar(zdiff,r,theta)
 c
-           z=zk*r
-           ifder=0
-           call jfuns2d(ier,nterms+3,z,rscale,jval,ifder,jder,
-     1           lwfjs,iscale,ntop)
+        zdiff(1)=ztarg(1,k)-center(1)
+        zdiff(2)=ztarg(2,k)-center(2)
+        call h2cart2polar(zdiff,r,theta)
 c
-           mptemp(0)=jval(0)
-           zmul=exp(ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul
-           ztemp2=-zinv
-           do j = 1,nterms+2
-              mptemp( j) = ztemp1*jval(j)
-              mptemp(-j) = ztemp2*jval(j)
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
-           if( ifpot .eq. 1 ) then
-              pot=jval(0)*mpole(0)
-              do n=1,nterms
-                 pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
-              enddo
-              pot=pot*ima4inv
-              pot1(k)=pot1(k)+pot
-           endif
-           if( ifgrad .eq. 1 ) then
-              grad(1)=jval(0) *mpolex(0)
-              grad(2)=jval(0) *mpoley(0)
-              do n=1,nterms+1
-               grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
-               grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
-              enddo
-              grad(1)=grad(1)*ima4inv
-              grad(2)=grad(2)*ima4inv
-              grad1(1,k)=grad1(1,k)+grad(1)
-              grad1(2,k)=grad1(2,k)+grad(2)
-           endif
-           if( ifhess .eq. 1 ) then
-              hess(1)=jval(0) *mpolexx(0)
-              hess(2)=jval(0) *mpolexy(0)
-              hess(3)=jval(0) *mpoleyy(0)
-              do n=1,nterms+2
-                 hess(1)=hess(1)+
-     $                   mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
-                 hess(2)=hess(2)+
-     $                   mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
-                 hess(3)=hess(3)+
-     $                   mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
-              enddo
-              hess(1)=hess(1)*ima4inv
-              hess(2)=hess(2)*ima4inv
-              hess(3)=hess(3)*ima4inv
-              hess1(1,k)=hess1(1,k)+hess(1)
-              hess1(2,k)=hess1(2,k)+hess(2)
-              hess1(3,k)=hess1(3,k)+hess(3)
-           endif
+        z=zk*r
+        ifder=0
+        call jfuns2d(ier,nterms+3,z,rscale,jval,ifder,jder,
+     1        lwfjs,iscale,ntop)
+c
+c        mptemp(0)=jval(0)
+c        do n=1,nterms+2
+c        mptemp(n)=jval(n)*exp(ima*n*theta)
+c        mptemp(-n)=jval(n)*exp(ima*(-n)*theta)*(-1)**n
+c        enddo
+c
+        mptemp(0)=jval(0)
+        zmul=exp(ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul
+        ztemp2=-zinv
+        do j = 1,nterms+2
+        mptemp( j) = ztemp1*jval(j)
+        mptemp(-j) = ztemp2*jval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+c
+c
+        if( ifpot .eq. 1 ) then
+
+c        pot=0
+
+        pot=jval(0)*mpole(0)
+        do n=1,nterms
+        pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
+        enddo
+        pot=pot*ima4inv
+c
+        pot1(k)=pot1(k)+pot
+c
+        endif
+c
+c
+        if( ifgrad .eq. 1 ) then
+
+c        grad(1)=0
+c        grad(2)=0
+
+        grad(1)=jval(0) *mpolex(0)
+        grad(2)=jval(0) *mpoley(0)
+        do n=1,nterms+1
+        grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
+        grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
+        enddo
+        grad(1)=grad(1)*ima4inv
+        grad(2)=grad(2)*ima4inv
+c
+        grad1(1,k)=grad1(1,k)+grad(1)
+        grad1(2,k)=grad1(2,k)+grad(2)
+c
+        endif
+c
+c
+        if( ifhess .eq. 1 ) then
+
+c        hess(1)=0
+c        hess(2)=0
+c        hess(3)=0
+
+        hess(1)=jval(0) *mpolexx(0)
+        hess(2)=jval(0) *mpolexy(0)
+        hess(3)=jval(0) *mpoleyy(0)
+        do n=1,nterms+2
+        hess(1)=hess(1)+mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
+        hess(2)=hess(2)+mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
+        hess(3)=hess(3)+mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
+        enddo
+
+        hess(1)=hess(1)*ima4inv
+        hess(2)=hess(2)*ima4inv
+        hess(3)=hess(3)*ima4inv
+
+        hess1(1,k)=hess1(1,k)+hess(1)
+        hess1(2,k)=hess1(2,k)+hess(2)
+        hess1(3,k)=hess1(3,k)+hess(3)
+
+        endif
+c
+        enddo
+c
         return
         end
 c
@@ -960,8 +1345,7 @@ c
         data ima/(0.0d0,1.0d0)/
 c
 c
-ccc        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -976,29 +1360,37 @@ ccc        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         endif
 c
         do n=-nterms,nterms
-           mpole(n)=0
+        mpole(n)=0
         enddo
 
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
-     1           lwfjs,iscale,ntop)
-           mpole(0)=mpole(0)+charge(j)*jval(0)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul*charge(j)
-           ztemp2=-zinv*charge(j)
-           do n=1,nterms
-              mpole(n)=mpole(n)+jval(n)*ztemp1
-              mpole(-n)=mpole(-n)+jval(n)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
+     1        lwfjs,iscale,ntop)
+
+        mpole(0)=mpole(0)+charge(j)*jval(0)
+c
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul*charge(j)
+        ztemp2=-zinv*charge(j)
+        do n=1,nterms
+ccc        mpole(n)=mpole(n)+charge(j)*jval(n)*exp(-ima*n*theta)
+ccc        mpole(-n)=mpole(-n)+charge(j)*jval(n)*(-1)**n*exp(ima*n*theta)
+        mpole(n)=mpole(n)+jval(n)*ztemp1
+        mpole(-n)=mpole(-n)+jval(n)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -1039,6 +1431,7 @@ c     mpole     : coeffs for the h-expansion
 c
         complex *16 zk,mpole(-nterms:nterms),charge(*)
         real *8 center(2),source(2,1),zdiff(2)
+
         complex *16, allocatable :: jval(:)
         complex *16, allocatable :: jder(:)
         integer, allocatable :: iscale(:)
@@ -1047,7 +1440,8 @@ c
         complex *16 ima,ima4,z
         data ima/(0.0d0,1.0d0)/
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+c
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -1061,27 +1455,38 @@ c
           return
         endif
 c
-        do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
-     1           lwfjs,iscale,ntop)
+c        do n=-nterms,nterms
+c        mpole(n)=0
+c        enddo
 
-           mpole(0)=mpole(0)+charge(j)*jval(0)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul*charge(j)
-           ztemp2=-zinv*charge(j)
-           do n=1,nterms
-              mpole(n)=mpole(n)+jval(n)*ztemp1
-              mpole(-n)=mpole(-n)+jval(n)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+        do j=1,ns
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
+     1        lwfjs,iscale,ntop)
+
+        mpole(0)=mpole(0)+charge(j)*jval(0)
+c
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul*charge(j)
+        ztemp2=-zinv*charge(j)
+        do n=1,nterms
+ccc        mpole(n)=mpole(n)+charge(j)*jval(n)*exp(-ima*n*theta)
+ccc        mpole(-n)=mpole(-n)+charge(j)*jval(n)*(-1)**n*exp(ima*n*theta)
+        mpole(n)=mpole(n)+jval(n)*ztemp1
+        mpole(-n)=mpole(-n)+jval(n)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -1145,24 +1550,32 @@ c
         enddo
 
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call h2dall(nterms+1,z,rscale,hval,ifder,hder)
-           mpole(0)=mpole(0)+charge(j)*hval(0)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul*charge(j)
-           ztemp2=-zinv*charge(j)
-           do n=1,nterms
-              mpole(n)=mpole(n)+hval(n)*ztemp1
-              mpole(-n)=mpole(-n)+hval(n)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call h2dall(nterms+1,z,rscale,hval,ifder,hder)
+
+        mpole(0)=mpole(0)+charge(j)*hval(0)
+c
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul*charge(j)
+        ztemp2=-zinv*charge(j)
+        do n=1,nterms
+ccc        mpole(n)=mpole(n)+charge(j)*hval(n)*exp(-ima*n*theta)
+ccc        mpole(-n)=mpole(-n)+charge(j)*hval(n)*(-1)**n*exp(ima*n*theta)
+        mpole(n)=mpole(n)+hval(n)*ztemp1
+        mpole(-n)=mpole(-n)+hval(n)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -1221,25 +1634,37 @@ c
         return
         endif
 c
+c        do n=-nterms,nterms
+c        mpole(n)=0
+c        enddo
+
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call h2dall(nterms+1,z,rscale,hval,ifder,hder)
-           mpole(0)=mpole(0)+charge(j)*hval(0)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1= zmul*charge(j)
-           ztemp2=-zinv*charge(j)
-           do n=1,nterms
-              mpole(n)=mpole(n)+hval(n)*ztemp1
-              mpole(-n)=mpole(-n)+hval(n)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call h2dall(nterms+1,z,rscale,hval,ifder,hder)
+
+        mpole(0)=mpole(0)+charge(j)*hval(0)
+c
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1= zmul*charge(j)
+        ztemp2=-zinv*charge(j)
+        do n=1,nterms
+ccc        mpole(n)=mpole(n)+charge(j)*hval(n)*exp(-ima*n*theta)
+ccc        mpole(-n)=mpole(-n)+charge(j)*hval(n)*(-1)**n*exp(ima*n*theta)
+        mpole(n)=mpole(n)+hval(n)*ztemp1
+        mpole(-n)=mpole(-n)+hval(n)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -1285,7 +1710,7 @@ c
 c
         nterms = nterms1+nterms2
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -1306,14 +1731,17 @@ c
         zdiff(1)=center2(1)-center1(1)
         zdiff(2)=center2(2)-center1(2)
         call h2cart2polar(zdiff,r,theta)
+c
         theta=theta-pi
+c
         z=zk*r
         ifder=0
         call jfuns2d(ier,nterms+3,z,rscale1,jval,ifder,jder,
      1        lwfjs,iscale,ntop)
 c
+c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
 c
         jtemp(0) = jval(0)
@@ -1322,48 +1750,68 @@ c
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           jtemp( j) = ztemp1*jval(j)
-           jtemp(-j) = ztemp2*jval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+        jtemp( j) = ztemp1*jval(j)
+        jtemp(-j) = ztemp2*jval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+c
+c        call prin2('rscale1=*',rscale1,1)
+c        call prin2('rscale2=*',rscale2,1)
+c        call prin2('jval=*',jval,2*(nterms))
+c        call prin2('jtemp=*',jtemp(-nterms),2*(2*nterms+1))
+c
+ccc        write(*,*) rscale1,rscale2
 c
         jexp(0) = jexp(0) + hexp(0)*jtemp(0)
         rsj=rscale1
         do j = 1,nterms1
-           jexp(0) = jexp(0)+(hexp(+j)*jtemp(-j))*rsj**2
-           jexp(0) = jexp(0)+(hexp(-j)*jtemp(+j))*rsj**2
-           rsj=rsj*rscale1
+        jexp(0) = jexp(0)+(hexp(+j)*jtemp(-j))*rsj**2
+        jexp(0) = jexp(0)+(hexp(-j)*jtemp(+j))*rsj**2
+        rsj=rsj*rscale1
         enddo
 c
         rsi=rscale1
         rsi7=rscale2
         rsi5=rscale1/rscale2
         do i = 1,nterms2
-           jexp(i) = jexp(i) + hexp(0)*jtemp(i)*rsi5
-           jexp(-i) = jexp(-i) + hexp(0)*jtemp(-i)*rsi5
-           rsj=rscale1
+        jexp(i) = jexp(i) + hexp(0)*jtemp(i)*rsi5
+        jexp(-i) = jexp(-i) + hexp(0)*jtemp(-i)*rsi5
+        rsj=rscale1
         do j = 1,min(nterms1,i)
-           jexp(i) = jexp(i)+(hexp(+j)*jtemp(i-j))*rsi5
-           jexp(i) = jexp(i)+(hexp(-j)*jtemp(i+j))*rsj**2*rsi5
-           jexp(-i) = jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsj**2*rsi5
-           jexp(-i) = jexp(-i)+(hexp(-j)*jtemp(-i+j))*rsi5
-           rsj=rsj*rscale1
+        jexp(i) = jexp(i)+(hexp(+j)*jtemp(i-j))*rsi5
+        jexp(i) = jexp(i)+(hexp(-j)*jtemp(i+j))*rsj**2*rsi5
+        jexp(-i) = jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsj**2*rsi5
+        jexp(-i) = jexp(-i)+(hexp(-j)*jtemp(-i+j))*rsi5
+        rsj=rsj*rscale1
         enddo
         rsj=rscale1**(i+1)
+ccc        write(*,*) '==='
         fs2=rsi5
         do j = i+1,nterms1
-           jexp(i) = jexp(i)+(hexp(+j)*jtemp(i-j))*rscale1**2*fs2
-           jexp(i) = jexp(i)+(hexp(-j)*jtemp(i+j))*rsj**2*rsi5
-           jexp(-i) = jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsj**2*rsi5
-           jexp(-i) = jexp(-i)+(hexp(-j)*jtemp(-i+j))*rscale1**2*fs2
-           rsj=rsj*rscale1
-           fs2=fs2*rscale1**2
+        jexp(i) = jexp(i)+(hexp(+j)*jtemp(i-j))*rscale1**2*fs2
+        jexp(i) = jexp(i)+(hexp(-j)*jtemp(i+j))*rsj**2*rsi5
+        jexp(-i) = jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsj**2*rsi5
+        jexp(-i) = jexp(-i)+(hexp(-j)*jtemp(-i+j))*rscale1**2*fs2
+        rsj=rsj*rscale1
+        fs2=fs2*rscale1**2
+ccc        write(*,*) rsi5,(rsj/rsi7)/rscale1**2, (rsj/rsi)/rscale1**2
         enddo
         rsi=rsi*rscale1
         rsi7=rsi7*rscale2
         rsi5=rsi5*rscale1/rscale2
         enddo
+c
+c        rsi=rscale2
+c        do i = 1,nterms2
+c        jexp(+i) = jexp(+i)/rsi
+c        jexp(-i) = jexp(-i)/rsi
+c        rsi=rsi*rscale2
+c        enddo
+c
+c        call prin2('hexp=*',hexp(-nterms1),2*(2*nterms1+1))
+c        call prin2('jexp=*',jexp(-nterms2),2*(2*nterms2+1))
+c
         return
         end
 c
@@ -1409,7 +1857,7 @@ c
 c
         nterms = nterms1+nterms2
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -1438,8 +1886,9 @@ c
         call jfuns2d(ier,nterms+3,z,rscale1,jval,ifder,jder,
      1        lwfjs,iscale,ntop)
 c
+c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
 c
         jtemp(0) = jval(0)
@@ -1448,45 +1897,63 @@ c
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           jtemp( j) = ztemp1*jval(j)
-           jtemp(-j) = ztemp2*jval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+c        jtemp(j) = exp(-ima*j*theta)*jval(j)*rscale1**j
+c        jtemp(-j) = exp(+ima*j*theta)*jval(j)*(-1)**j*rscale1**j
+        jtemp( j) = ztemp1*jval(j)
+        jtemp(-j) = ztemp2*jval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
 c
         jexp(0) = jexp(0) + hexp(0)*jtemp(0)
         do j = 1,nterms1
-           jexp(0) = jexp(0)+(hexp(+j)*jtemp(-j))
-           jexp(0) = jexp(0)+(hexp(-j)*jtemp(+j))
+        jexp(0) = jexp(0)+(hexp(+j)*jtemp(-j))
+        jexp(0) = jexp(0)+(hexp(-j)*jtemp(+j))
         enddo
 c
         rsi=rscale1
         rsi7=rscale2
         rsi5=rscale2/rscale1
         do i = 1,nterms2
-           jexp(i) = jexp(i) + hexp(0)*jtemp(i)*rsi7*rsi
-           jexp(-i) = jexp(-i) + hexp(0)*jtemp(-i)*rsi7*rsi
-           fs2=rsi5
-           if( nterms1 .le. i ) fs2=fs2*rscale1**(2*(i-nterms1))
-           do j = min(nterms1,i),1,-1
-              jexp(i)=jexp(i)+(hexp(+j)*jtemp(i-j))*fs2
-              jexp(i)=jexp(i)+(hexp(-j)*jtemp(i+j))*rsi7*rsi
-              jexp(-i)=jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsi7*rsi
-              jexp(-i)=jexp(-i)+(hexp(-j)*jtemp(-i+j))*fs2
-              fs2=fs2*rscale1**2
-           enddo
-           rsj=rscale1**(i+1)
-           do j = i+1,nterms1
-              jexp(i)=jexp(i)+(hexp(+j)*jtemp(i-j))*rsi5
-              jexp(i)=jexp(i)+(hexp(-j)*jtemp(i+j))*rsi7*rsi
-              jexp(-i)=jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsi7*rsi
-              jexp(-i)=jexp(-i)+(hexp(-j)*jtemp(-i+j))*rsi5
-              rsj=rsj*rscale1
-           enddo
-           rsi=rsi*rscale1
-           rsi7=rsi7*rscale2
-           rsi5=rsi5*rscale2/rscale1
+        jexp(i) = jexp(i) + hexp(0)*jtemp(i)*rsi7*rsi
+        jexp(-i) = jexp(-i) + hexp(0)*jtemp(-i)*rsi7*rsi
+        fs2=rsi5
+        if( nterms1 .le. i ) fs2=fs2*rscale1**(2*(i-nterms1))
+        do j = min(nterms1,i),1,-1
+        jexp(i)=jexp(i)+(hexp(+j)*jtemp(i-j))*fs2
+        jexp(i)=jexp(i)+(hexp(-j)*jtemp(i+j))*rsi7*rsi
+        jexp(-i)=jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsi7*rsi
+        jexp(-i)=jexp(-i)+(hexp(-j)*jtemp(-i+j))*fs2
+        fs2=fs2*rscale1**2
         enddo
+        rsj=rscale1**(i+1)
+        do j = i+1,nterms1
+        jexp(i)=jexp(i)+(hexp(+j)*jtemp(i-j))*rsi5
+        jexp(i)=jexp(i)+(hexp(-j)*jtemp(i+j))*rsi7*rsi
+        jexp(-i)=jexp(-i)+(hexp(+j)*jtemp(-i-j))*rsi7*rsi
+        jexp(-i)=jexp(-i)+(hexp(-j)*jtemp(-i+j))*rsi5
+        rsj=rsj*rscale1
+        enddo
+        rsi=rsi*rscale1
+        rsi7=rsi7*rscale2
+        rsi5=rsi5*rscale2/rscale1
+        enddo
+c
+c        call prin2('rscale1=*',rscale1,1)
+c        call prin2('rscale2=*',rscale2,1)
+c        call prin2('jval=*',jval,2*(nterms))
+c        call prin2('jtemp=*',jtemp(-nterms),2*(2*nterms+1))
+c
+c        rsi7=rscale2
+c        do i = 1,nterms2
+c        jexp(+i) = jexp(+i)*rsi7
+c        jexp(-i) = jexp(-i)*rsi7
+c        rsi7=rsi7*rscale2
+c        enddo
+c
+c        call prin2('hexp=*',hexp(-nterms1),2*(2*nterms1+1))
+c        call prin2('jexp=*',jexp(-nterms2),2*(2*nterms2+1))
+c
         return
         end
 c
@@ -1553,8 +2020,9 @@ c
         ifder=0
         call h2dall(nterms+1,z,rscale1,hval,ifder,hder)
 c        
+c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
 c
         htemp(0) = hval(0)
@@ -1563,48 +2031,58 @@ c
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           htemp( j) = ztemp1*hval(j)
-           htemp(-j) = ztemp2*hval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+        htemp( j) = ztemp1*hval(j)
+        htemp(-j) = ztemp2*hval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+c
+ccc        call prin2('rscale1=*',rscale1,1)
+ccc        call prin2('rscale2=*',rscale2,1)
+ccc        call prin2('hval=*',hval,2*(nterms))
+ccc        call prin2('htemp=*',htemp(-nterms),2*(2*nterms+1))
 c
         jexp(0) = jexp(0) + hexp(0)*htemp(0)
         do j = 1,nterms1
-           jexp(0) = jexp(0)+(hexp(+j)*htemp(-j))
-           jexp(0) = jexp(0)+(hexp(-j)*htemp(+j))
+        jexp(0) = jexp(0)+(hexp(+j)*htemp(-j))
+        jexp(0) = jexp(0)+(hexp(-j)*htemp(+j))
         enddo
 c
         rsi=rscale1
         rsi2=rscale1**2
         do i = 1,nterms2
-           jexp(i) = jexp(i) + hexp(0)*htemp(i)
-           jexp(-i) = jexp(-i) + hexp(0)*htemp(-i)
-           rsj=rscale1
-           rsj2=rscale1**2
-           do j = 1,min(nterms1,i)
-              jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsj2
-              jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
-              jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
-              jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsj2
-              rsj=rsj*rscale1
-              rsj2=rsj2*rscale1**2
-           enddo
-           do j = i+1,nterms1
-              jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsi2
-              jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
-              jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
-              jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsi2
-           enddo
-           rsi=rsi*rscale1
-           rsi2=rsi2*rscale1**2
+        jexp(i) = jexp(i) + hexp(0)*htemp(i)
+        jexp(-i) = jexp(-i) + hexp(0)*htemp(-i)
+        rsj=rscale1
+        rsj2=rscale1**2
+        do j = 1,min(nterms1,i)
+        jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsj2
+        jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
+        jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
+        jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsj2
+        rsj=rsj*rscale1
+        rsj2=rsj2*rscale1**2
         enddo
+        do j = i+1,nterms1
+        jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsi2
+        jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
+        jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
+        jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsi2
+        enddo
+        rsi=rsi*rscale1
+        rsi2=rsi2*rscale1**2
+        enddo
+c
         rsi=rscale2/rscale1
         do i = 1,nterms2
-           jexp(+i) = jexp(+i)*rsi
-           jexp(-i) = jexp(-i)*rsi
-           rsi=rsi*rscale2/rscale1
+        jexp(+i) = jexp(+i)*rsi
+        jexp(-i) = jexp(-i)*rsi
+        rsi=rsi*rscale2/rscale1
         enddo
+c
+ccc        call prin2('hexp=*',hexp(-nterms1),2*(2*nterms1+1))
+ccc        call prin2('jexp=*',jexp(-nterms2),2*(2*nterms2+1))
+c
         return
         end
 c
@@ -1671,55 +2149,69 @@ c
         ifder=0
         call h2dall(nterms+1,z,rscale1,hval,ifder,hder)
 c        
+c
+c        do i = -nterms2,nterms2
+c        jexp(i) = 0
+c        enddo
+c
         htemp(0) = hval(0)
         zmul=exp(-ima*theta)
         zinv=conjg(zmul)
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           htemp( j) = ztemp1*hval(j)
-           htemp(-j) = ztemp2*hval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+        htemp( j) = ztemp1*hval(j)
+        htemp(-j) = ztemp2*hval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+c
+ccc        call prin2('rscale1=*',rscale1,1)
+ccc        call prin2('rscale2=*',rscale2,1)
+ccc        call prin2('hval=*',hval,2*(nterms))
+ccc        call prin2('htemp=*',htemp(-nterms),2*(2*nterms+1))
 c
         jexp(0) = jexp(0) + hexp(0)*htemp(0)
         do j = 1,nterms1
-           jexp(0) = jexp(0)+(hexp(+j)*htemp(-j))
-           jexp(0) = jexp(0)+(hexp(-j)*htemp(+j))
+        jexp(0) = jexp(0)+(hexp(+j)*htemp(-j))
+        jexp(0) = jexp(0)+(hexp(-j)*htemp(+j))
         enddo
 c
         rsi=rscale1
         rsi2=rscale1**2
         do i = 1,nterms2
-           jexp(i) = jexp(i) + hexp(0)*htemp(i)
-           jexp(-i) = jexp(-i) + hexp(0)*htemp(-i)
-           rsj=rscale1
-           rsj2=rscale1**2
-           do j = 1,min(nterms1,i)
-              jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsj2
-              jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
-              jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
-              jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsj2
-              rsj=rsj*rscale1
-              rsj2=rsj2*rscale1**2
-           enddo
-           do j = i+1,nterms1
-              jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsi2
-              jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
-              jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
-              jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsi2
-           enddo
-           rsi=rsi*rscale1
-           rsi2=rsi2*rscale1**2
+        jexp(i) = jexp(i) + hexp(0)*htemp(i)
+        jexp(-i) = jexp(-i) + hexp(0)*htemp(-i)
+        rsj=rscale1
+        rsj2=rscale1**2
+        do j = 1,min(nterms1,i)
+        jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsj2
+        jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
+        jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
+        jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsj2
+        rsj=rsj*rscale1
+        rsj2=rsj2*rscale1**2
+        enddo
+        do j = i+1,nterms1
+        jexp(i) = jexp(i)+(hexp(+j)*htemp(i-j))*rsi2
+        jexp(i) = jexp(i)+(hexp(-j)*htemp(i+j))
+        jexp(-i) = jexp(-i)+(hexp(+j)*htemp(-i-j))
+        jexp(-i) = jexp(-i)+(hexp(-j)*htemp(-i+j))*rsi2
+        enddo
+        rsi=rsi*rscale1
+        rsi2=rsi2*rscale1**2
         enddo
 c
         rsi=rscale2/rscale1
         do i = 1,nterms2
-           jexp(+i) = jexp(+i)*rsi
-           jexp(-i) = jexp(-i)*rsi
-           rsi=rsi*rscale2/rscale1
+        jexp(+i) = jexp(+i)*rsi
+        jexp(-i) = jexp(-i)*rsi
+        rsi=rsi*rscale2/rscale1
         enddo
+c
+ccc        call prin2('hexp=*',hexp(-nterms1),2*(2*nterms1+1))
+ccc        call prin2('jexp=*',jexp(-nterms2),2*(2*nterms2+1))
+c
         return
         end
 c
@@ -1770,7 +2262,7 @@ c
         endif
 c
         do i = -nterms1_trunc,nterms1_trunc
-           hexp1(i) = hexp(i)
+        hexp1(i) = hexp(i)
         enddo
 c
         call h2dmploc(zk,
@@ -1778,8 +2270,9 @@ c
      $     rscale2,center2,jexp1,nterms2_trunc)
 c
         do i = -nterms2_trunc,nterms2_trunc
-           jexp(i) = jexp(i) + jexp1(i)
+        jexp(i) = jexp(i) + jexp1(i)
         enddo
+c
         return
         end
 c
@@ -1804,7 +2297,7 @@ c
 c
         nterms = nterms1+nterms2
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -1835,7 +2328,7 @@ c
 c
 c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
 c
         jtemp(0) = jval(0)
@@ -1844,27 +2337,33 @@ c
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           jtemp( j) = ztemp1*jval(j)
-           jtemp(-j) = ztemp2*jval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+c        jtemp(j) = exp(-ima*j*theta)*jval(j)*rscale1**j
+c        jtemp(-j) = exp(+ima*j*theta)*jval(j)*(-1)**j*rscale1**j
+        jtemp( j) = ztemp1*jval(j)
+        jtemp(-j) = ztemp2*jval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
 c
         do i = -nterms2,nterms2
-           jexp(i) = jexp(i) + hexp(0)*jtemp(i)
-           rsj=rscale1
-           do j = 1,nterms1
-              jexp(i) = jexp(i)+
-     $          (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))*rsj
-              rsj=rsj*rscale1
-           enddo
+        jexp(i) = jexp(i) + hexp(0)*jtemp(i)
+        rsj=rscale1
+        do j = 1,nterms1
+c        jexp(i) = jexp(i)+
+c     $     (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))*rscale1**j
+        jexp(i) = jexp(i)+
+     $     (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))*rsj
+        rsj=rsj*rscale1
         enddo
+        enddo
+c
         rsi=rscale2
         do i = 1,nterms2
-           jexp(+i) = jexp(+i)/rsi
-           jexp(-i) = jexp(-i)/rsi
-           rsi=rsi*rscale2
+        jexp(+i) = jexp(+i)/rsi
+        jexp(-i) = jexp(-i)/rsi
+        rsi=rsi*rscale2
         enddo
+
         return
         end
 c
@@ -1889,7 +2388,7 @@ c
 c
         nterms = nterms1+nterms2
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -1918,37 +2417,45 @@ c
         call jfuns2d(ier,nterms+3,z,rscale1,jval,ifder,jder,
      1        lwfjs,iscale,ntop)
 c
+c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
+c
         jtemp(0) = jval(0)
         zmul=exp(-ima*theta)*rscale1
         zinv=conjg(zmul)
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           jtemp( j) = ztemp1*jval(j)
-           jtemp(-j) = ztemp2*jval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+c        jtemp(j) = exp(-ima*j*theta)*jval(j)*rscale1**j
+c        jtemp(-j) = exp(+ima*j*theta)*jval(j)*(-1)**j*rscale1**j
+        jtemp( j) = ztemp1*jval(j)
+        jtemp(-j) = ztemp2*jval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
 c
         rscale1inv=1/rscale1
         do i = -nterms2,nterms2
-           jexp(i) = jexp(i) + hexp(0)*jtemp(i)
-           rsj=rscale1inv
-           do j = 1,nterms1
-              jexp(i) = jexp(i)+
-     $           (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))*rsj
-              rsj=rsj*rscale1inv
-           enddo
+        jexp(i) = jexp(i) + hexp(0)*jtemp(i)
+        rsj=rscale1inv
+        do j = 1,nterms1
+c        jexp(i) = jexp(i)+
+c     $     (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))/rscale1**j
+        jexp(i) = jexp(i)+
+     $     (hexp(+j)*jtemp(i-j)+hexp(-j)*jtemp(i+j))*rsj
+        rsj=rsj*rscale1inv
         enddo
+        enddo
+c
         rsi=rscale2
         do i = 1,nterms2
-           jexp(+i) = jexp(+i)*rsi
-           jexp(-i) = jexp(-i)*rsi
-           rsi=rsi*rscale2
+        jexp(+i) = jexp(+i)*rsi
+        jexp(-i) = jexp(-i)*rsi
+        rsi=rsi*rscale2
         enddo
+
         return
         end
 c
@@ -1993,9 +2500,10 @@ c
         z=zk*r
         ifder=0
         call h2dall(nterms+1,z,rscale1,hval,ifder,hder)
+c        
 c
         do i = -nterms2,nterms2
-           jexp(i) = 0
+        jexp(i) = 0
         enddo
 c
         htemp(0) = hval(0)
@@ -2004,27 +2512,37 @@ c
         ztemp1= zmul
         ztemp2=-zinv
         do j = 1,nterms
-           htemp( j) = ztemp1*hval(j)
-           htemp(-j) = ztemp2*hval(j)
-           ztemp1= ztemp1*zmul
-           ztemp2=-ztemp2*zinv
+c        htemp(j) = exp(-ima*j*theta)*hval(j)/rscale1**j
+c        htemp(-j) = exp(+ima*j*theta)*hval(j)*(-1)**j/rscale1**j
+        htemp( j) = ztemp1*hval(j)
+        htemp(-j) = ztemp2*hval(j)
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
 c
+c        call prin2('rscale1=*',rscale1,1)
+c        call prin2('rscale2=*',rscale2,1)
+c        call prin2('htemp=*',htemp(-nterms),2*(2*nterms+1))
+c
         do i = -nterms2,nterms2
-           jexp(i) = jexp(i) + hexp(0)*htemp(i)
-           rsj=rscale1
-           do j = 1,nterms1
-              jexp(i) = jexp(i)+
-     $           (hexp(+j)*htemp(i-j)+hexp(-j)*htemp(i+j))*rsj
-              rsj=rsj*rscale1
-           enddo
+        jexp(i) = jexp(i) + hexp(0)*htemp(i)
+        rsj=rscale1
+        do j = 1,nterms1
+c        jexp(i) = jexp(i)+
+c     $     (hexp(+j)*htemp(i-j)+hexp(-j)*htemp(i+j))*rscale1**j
+        jexp(i) = jexp(i)+
+     $     (hexp(+j)*htemp(i-j)+hexp(-j)*htemp(i+j))*rsj
+        rsj=rsj*rscale1
         enddo
+        enddo
+c
         rsi=rscale2
         do i = 1,nterms2
-           jexp(+i) = jexp(+i)*rsi
-           jexp(-i) = jexp(-i)*rsi
-           rsi=rsi*rscale2
+        jexp(+i) = jexp(+i)*rsi
+        jexp(-i) = jexp(-i)*rsi
+        rsi=rsi*rscale2
         enddo
+
         return
         end
 c
@@ -2158,20 +2676,15 @@ c
       ima4=-4*ima
       ima4inv=ima/4
 c
-      call prin2(' source is *',source,2)
-      call prin2(' target is *',target,2)
       xdiff=target(1)-source(1)
       ydiff=target(2)-source(2)
       rr=xdiff*xdiff+ydiff*ydiff
       r=sqrt(rr)
       z=wavek*r
-      call prin2(' z is *',z,2)
 c
       ifexpon = 1
       call hank103(z, h0, h1, ifexpon)
-      call prin2(' h0 is *',h0,2)
       pot = h0*charge*ima4inv
-      call prin2(' pot is *',pot,2)
 c
       if (ifgrad.eq.1) then
          cd = -h1*(wavek*charge*ima4inv/r)
@@ -2395,8 +2908,7 @@ c
         data ima/(0.0d0,1.0d0)/
 c
 c
-ccc        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -2411,46 +2923,69 @@ ccc        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         endif
 c
         do n=-nterms,nterms
-           mpole(n)=0
+        mpole(n)=0
         enddo
 
         do j=1,ns
 c
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
-     1           lwfjs,iscale,ntop)
-
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1=-zmul*dipstr(j)*zk/2
-           ztemp2=+zinv*dipstr(j)*zk/2
-           ztemp3= zinv/rscale
-           ztemp4= zmul*rscale
-           ztemp5= zmul/rscale
-           ztemp6= zinv*rscale
-           ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
-           ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
-           ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
-           ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
-           mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
-     $       (
-     $       (zmul+zinv)*dipvec(1,j)+
-     $       (zmul-zinv)*ima*dipvec(2,j)
-     $       )
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
 c
-           do n=1,nterms
-              mpole(n)=mpole(n)+
-     $                  (jval(n-1)*ztemp3+jval(n+1)*ztemp4)*ztemp1
-              mpole(-n)=mpole(-n)+
-     $                  (jval(n-1)*ztemp5+jval(n+1)*ztemp6)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+        z=zk*r
+        ifder=0
+        call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
+     1        lwfjs,iscale,ntop)
+
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1=-zmul*dipstr(j)*zk/2
+        ztemp2=+zinv*dipstr(j)*zk/2
+        ztemp3= zinv/rscale
+        ztemp4= zmul*rscale
+        ztemp5= zmul/rscale
+        ztemp6= zinv*rscale
+
+        ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
+        ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
+        ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
+        ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
+
+c        mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
+c     $     (
+c     $     (+exp(-ima*theta)+exp(ima*theta))*dipvec(1,j)+
+c     $     (+exp(-ima*theta)-exp(ima*theta))*ima*dipvec(2,j)
+c     $     )
+c
+        mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
+     $     (
+     $     (zmul+zinv)*dipvec(1,j)+
+     $     (zmul-zinv)*ima*dipvec(2,j)
+     $     )
+c
+        do n=1,nterms
+c        mpole(n)=mpole(n)+dipstr(j)*zk/2* ((-jval(n-1)/rscale*exp(ima
+c     $     *theta)+jval(n+1)*rscale*exp(-ima*theta))*dipvec(1,j)+
+c     $     (jval(n-1)/rscale*exp(ima*theta)+jval(n+1)*rscale*exp(-ima
+c     $     *theta)) *ima*dipvec(2,j)) *exp(-ima*n *theta)
+c        mpole(-n)=mpole(-n)+dipstr(j)*zk/2* ((-jval(n-1)/rscale*exp(-ima
+c     $     *theta)+jval(n+1)*rscale*exp(ima*theta))*dipvec(1,j)- (jval(n
+c     $     -1)/rscale*exp(-ima*theta)+jval(n+1)*rscale*exp(ima*theta))
+c     $     *ima *dipvec(2,j)) *exp(+ima*n *theta)*(-1)**n 
+c        mpole( n)=mpole( n)+((-jval(n-1)*ztemp3 +jval(n+1)*ztemp4)
+c     $     *dipvec(1,j)+ (jval(n-1)*ztemp3+jval(n+1)*ztemp4) *ima
+c     $     *dipvec(2,j)) *ztemp1
+c        mpole(-n)=mpole(-n)+((-jval(n-1)*ztemp5 +jval(n+1)*ztemp6)
+c     $     *dipvec(1,j)- (jval(n-1)*ztemp5+jval(n+1)*ztemp6) *ima
+c     $     *dipvec(2,j)) *ztemp2
+        mpole( n)=mpole( n)+(jval(n-1)*ztemp3+jval(n+1)*ztemp4)*ztemp1
+        mpole(-n)=mpole(-n)+(jval(n-1)*ztemp5+jval(n+1)*ztemp6)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -2502,7 +3037,7 @@ c
         data ima/(0.0d0,1.0d0)/
 c
 c
-        lwfjs = nterms+5 + 4*nterms + 100
+        lwfjs = min(10000,nterms+5 + 4*nterms + 100)
         allocate(jval(0:lwfjs+10), stat=ier)
         if (ier.eq.1) then
           return
@@ -2516,40 +3051,70 @@ c
           return
         endif
 c
+c        do n=-nterms,nterms
+c        mpole(n)=0
+c        enddo
+
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
-     1          lwfjs,iscale,ntop)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1=-zmul*dipstr(j)*zk/2
-           ztemp2=+zinv*dipstr(j)*zk/2
-           ztemp3= zinv/rscale
-           ztemp4= zmul*rscale
-           ztemp5= zmul/rscale
-           ztemp6= zinv*rscale
-           ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
-           ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
-           ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
-           ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
-           mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
-     $        (
-     $        (zmul+zinv)*dipvec(1,j)+
-     $        (zmul-zinv)*ima*dipvec(2,j)
-     $        )
-           do n=1,nterms
-              mpole(n)=mpole(n)+
-     $                 (jval(n-1)*ztemp3+jval(n+1)*ztemp4)*ztemp1
-              mpole(-n)=mpole(-n)+
-     $                  (jval(n-1)*ztemp5+jval(n+1)*ztemp6)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call jfuns2d(ier,nterms+1,z,rscale,jval,ifder,jder,
+     1        lwfjs,iscale,ntop)
+
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1=-zmul*dipstr(j)*zk/2
+        ztemp2=+zinv*dipstr(j)*zk/2
+        ztemp3= zinv/rscale
+        ztemp4= zmul*rscale
+        ztemp5= zmul/rscale
+        ztemp6= zinv*rscale
+
+        ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
+        ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
+        ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
+        ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
+
+c        mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
+c     $     (
+c     $     (+exp(-ima*theta)+exp(ima*theta))*dipvec(1,j)+
+c     $     (+exp(-ima*theta)-exp(ima*theta))*ima*dipvec(2,j)
+c     $     )
+c
+        mpole(0)=mpole(0)-dipstr(j)*jval(1)*zk/2*rscale*
+     $     (
+     $     (zmul+zinv)*dipvec(1,j)+
+     $     (zmul-zinv)*ima*dipvec(2,j)
+     $     )
+c
+        do n=1,nterms
+c        mpole(n)=mpole(n)-dipstr(j)*zk/2* ((-jval(n-1)/rscale*exp(ima
+c     $     *theta)+jval(n+1)*rscale*exp(-ima*theta))*dipvec(1,j)+
+c     $     (jval(n-1)/rscale*exp(ima*theta)+jval(n+1)*rscale*exp(-ima
+c     $     *theta)) *ima*dipvec(2,j)) *exp(-ima*n *theta)
+c        mpole(-n)=mpole(-n)-dipstr(j)*zk/2* ((-jval(n-1)/rscale*exp(-ima
+c     $     *theta)+jval(n+1)*rscale*exp(ima*theta))*dipvec(1,j)- (jval(n
+c     $     -1)/rscale*exp(-ima*theta)+jval(n+1)*rscale*exp(ima*theta))
+c     $     *ima *dipvec(2,j)) *exp(+ima*n *theta)*(-1)**n 
+c        mpole( n)=mpole( n)+((-jval(n-1)*ztemp3 +jval(n+1)*ztemp4)
+c     $     *dipvec(1,j)+ (jval(n-1)*ztemp3+jval(n+1)*ztemp4) *ima
+c     $     *dipvec(2,j)) *ztemp1
+c        mpole(-n)=mpole(-n)+((-jval(n-1)*ztemp5 +jval(n+1)*ztemp6)
+c     $     *dipvec(1,j)- (jval(n-1)*ztemp5+jval(n+1)*ztemp6) *ima
+c     $     *dipvec(2,j)) *ztemp2
+        mpole( n)=mpole( n)+(jval(n-1)*ztemp3+jval(n+1)*ztemp4)*ztemp1
+        mpole(-n)=mpole(-n)+(jval(n-1)*ztemp5+jval(n+1)*ztemp6)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -2610,43 +3175,68 @@ c
         endif
 c
         do n=-nterms,nterms
-           mpole(n)=0
+        mpole(n)=0
         enddo
 
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call h2dall(nterms+2,z,rscale,hval,ifder,hder)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1=-zmul*dipstr(j)*zk/2
-           ztemp2=+zinv*dipstr(j)*zk/2
-           ztemp3= zinv*rscale
-           ztemp4= zmul/rscale
-           ztemp5= zmul*rscale
-           ztemp6= zinv/rscale
-           ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
-           ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
-           ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
-           ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
 c
-           mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
-     $        (
-     $        (zmul+zinv)*dipvec(1,j)+
-     $        (zmul-zinv)*ima*dipvec(2,j)
-     $        )
-           do n=1,nterms
-              mpole( n)=mpole( n)+
-     $                  (hval(n-1)*ztemp3+hval(n+1)*ztemp4)*ztemp1
-              mpole(-n)=mpole(-n)+
-     $                  (hval(n-1)*ztemp5+hval(n+1)*ztemp6)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call h2dall(nterms+2,z,rscale,hval,ifder,hder)
+
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1=-zmul*dipstr(j)*zk/2
+        ztemp2=+zinv*dipstr(j)*zk/2
+        ztemp3= zinv*rscale
+        ztemp4= zmul/rscale
+        ztemp5= zmul*rscale
+        ztemp6= zinv/rscale
+
+        ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
+        ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
+        ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
+        ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
+
+c        mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
+c     $     (
+c     $     (+exp(-ima*theta)+exp(ima*theta))*dipvec(1,j)+
+c     $     (+exp(-ima*theta)-exp(ima*theta))*ima*dipvec(2,j)
+c     $     )
+c
+        mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
+     $     (
+     $     (zmul+zinv)*dipvec(1,j)+
+     $     (zmul-zinv)*ima*dipvec(2,j)
+     $     )
+c
+        do n=1,nterms
+c        mpole(n)=mpole(n)-dipstr(j)*zk/2* ((-hval(n-1)*rscale*exp(ima
+c     $     *theta)+hval(n+1)/rscale*exp(-ima*theta))*dipvec(1,j)+
+c     $     (hval(n-1)*rscale*exp(ima*theta)+hval(n+1)/rscale*exp(-ima
+c     $     *theta)) *ima*dipvec(2,j)) *exp(-ima*n *theta)
+c        mpole(-n)=mpole(-n)-dipstr(j)*zk/2* ((-hval(n-1)*rscale*exp(-ima
+c     $     *theta)+hval(n+1)/rscale*exp(ima*theta))*dipvec(1,j)- (hval(n
+c     $     -1)*rscale*exp(-ima*theta)+hval(n+1)/rscale*exp(ima*theta))
+c     $     *ima *dipvec(2,j)) *exp(+ima*n *theta)*(-1)**n 
+c        mpole( n)=mpole( n)+((-hval(n-1)*ztemp3 +hval(n+1)*ztemp4)
+c     $     *dipvec(1,j)+ (hval(n-1)*ztemp3+hval(n+1)*ztemp4) *ima
+c     $     *dipvec(2,j)) *ztemp1
+c        mpole(-n)=mpole(-n)+((-hval(n-1)*ztemp5 +hval(n+1)*ztemp6)
+c     $     *dipvec(1,j)- (hval(n-1)*ztemp5+hval(n+1)*ztemp6) *ima
+c     $     *dipvec(2,j)) *ztemp2
+        mpole( n)=mpole( n)+(hval(n-1)*ztemp3+hval(n+1)*ztemp4)*ztemp1
+        mpole(-n)=mpole(-n)+(hval(n-1)*ztemp5+hval(n+1)*ztemp6)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -2706,39 +3296,68 @@ c
         return
         endif
 c
+c        do n=-nterms,nterms
+c        mpole(n)=0
+c        enddo
+
         do j=1,ns
-           zdiff(1)=source(1,j)-center(1)
-           zdiff(2)=source(2,j)-center(2)
-           call h2cart2polar(zdiff,r,theta)
-           z=zk*r
-           ifder=0
-           call h2dall(nterms+2,z,rscale,hval,ifder,hder)
-           zmul=exp(-ima*theta)
-           zinv=conjg(zmul)
-           ztemp1=-zmul*dipstr(j)*zk/2
-           ztemp2=+zinv*dipstr(j)*zk/2
-           ztemp3= zinv*rscale
-           ztemp4= zmul/rscale
-           ztemp5= zmul*rscale
-           ztemp6= zinv/rscale
-           ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
-           ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
-           ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
-           ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
-           mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
-     $        (
-     $        (zmul+zinv)*dipvec(1,j)+
-     $        (zmul-zinv)*ima*dipvec(2,j)
-     $        )
-           do n=1,nterms
-              mpole(n)=mpole(n)+
-     $                  (hval(n-1)*ztemp3+hval(n+1)*ztemp4)*ztemp1
-              mpole(-n)=mpole(-n)+
-     $                  (hval(n-1)*ztemp5+hval(n+1)*ztemp6)*ztemp2
-              ztemp1= ztemp1*zmul
-              ztemp2=-ztemp2*zinv
-           enddo
+c
+        zdiff(1)=source(1,j)-center(1)
+        zdiff(2)=source(2,j)-center(2)
+        call h2cart2polar(zdiff,r,theta)
+c
+        z=zk*r
+        ifder=0
+        call h2dall(nterms+2,z,rscale,hval,ifder,hder)
+
+        zmul=exp(-ima*theta)
+        zinv=conjg(zmul)
+        ztemp1=-zmul*dipstr(j)*zk/2
+        ztemp2=+zinv*dipstr(j)*zk/2
+        ztemp3= zinv*rscale
+        ztemp4= zmul/rscale
+        ztemp5= zmul*rscale
+        ztemp6= zinv/rscale
+
+        ztemp3 = ztemp3*(-dipvec(1,j)+ima*dipvec(2,j))
+        ztemp4 = ztemp4*(+dipvec(1,j)+ima*dipvec(2,j))
+        ztemp5 = ztemp5*(-dipvec(1,j)-ima*dipvec(2,j))
+        ztemp6 = ztemp6*(+dipvec(1,j)-ima*dipvec(2,j))
+
+c        mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
+c     $     (
+c     $     (+exp(-ima*theta)+exp(ima*theta))*dipvec(1,j)+
+c     $     (+exp(-ima*theta)-exp(ima*theta))*ima*dipvec(2,j)
+c     $     )
+        mpole(0)=mpole(0)-dipstr(j)*hval(1)*zk/2/rscale*
+     $     (
+     $     (zmul+zinv)*dipvec(1,j)+
+     $     (zmul-zinv)*ima*dipvec(2,j)
+     $     )
+c
+        do n=1,nterms
+c        mpole(n)=mpole(n)-dipstr(j)*zk/2* ((-hval(n-1)*rscale*exp(ima
+c     $     *theta)+hval(n+1)/rscale*exp(-ima*theta))*dipvec(1,j)+
+c     $     (hval(n-1)*rscale*exp(ima*theta)+hval(n+1)/rscale*exp(-ima
+c     $     *theta)) *ima*dipvec(2,j)) *exp(-ima*n *theta)
+c        mpole(-n)=mpole(-n)-dipstr(j)*zk/2* ((-hval(n-1)*rscale*exp(-ima
+c     $     *theta)+hval(n+1)/rscale*exp(ima*theta))*dipvec(1,j)- (hval(n
+c     $     -1)*rscale*exp(-ima*theta)+hval(n+1)/rscale*exp(ima*theta))
+c     $     *ima *dipvec(2,j)) *exp(+ima*n *theta)*(-1)**n 
+c        mpole( n)=mpole( n)+((-hval(n-1)*ztemp3 +hval(n+1)*ztemp4)
+c     $     *dipvec(1,j)+ (hval(n-1)*ztemp3+hval(n+1)*ztemp4) *ima
+c     $     *dipvec(2,j)) *ztemp1
+c        mpole(-n)=mpole(-n)+((-hval(n-1)*ztemp5 +hval(n+1)*ztemp6)
+c     $     *dipvec(1,j)- (hval(n-1)*ztemp5+hval(n+1)*ztemp6) *ima
+c     $     *dipvec(2,j)) *ztemp2
+        mpole( n)=mpole( n)+(hval(n-1)*ztemp3+hval(n+1)*ztemp4)*ztemp1
+        mpole(-n)=mpole(-n)+(hval(n-1)*ztemp5+hval(n+1)*ztemp6)*ztemp2
+        ztemp1= ztemp1*zmul
+        ztemp2=-ztemp2*zinv
         enddo
+
+        enddo
+
         return
         end
 c
@@ -3007,13 +3626,13 @@ c
      $   target,ifpot,potloc,ifgrad,gradloc,ifhess,hessloc)
          if (ifpot.eq.1) pot = pot + potloc
          if (ifgrad.eq.1) then
-            grad(1) = grad(1) + gradloc(1)
-            grad(2) = grad(2) + gradloc(2)
+         grad(1) = grad(1) + gradloc(1)
+         grad(2) = grad(2) + gradloc(2)
          endif
          if (ifhess.eq.1) then
-            hess(1) = hess(1) + hessloc(1)
-            hess(2) = hess(2) + hessloc(2)
-            hess(3) = hess(3) + hessloc(3)
+         hess(1) = hess(1) + hessloc(1)
+         hess(2) = hess(2) + hessloc(2)
+         hess(3) = hess(3) + hessloc(3)
          endif
       enddo
       return
@@ -3115,6 +3734,11 @@ c
          cd = -h1*(wavek*charge*ima4inv/r)
          grad(1) = cd*xdiff
          grad(2) = cd*ydiff
+c         ctheta=xdiff/r
+c         stheta=ydiff/r
+c         cd = -h1*(wavek*charge*ima4inv)
+c         grad(1) = cd*ctheta
+c         grad(2) = cd*stheta
       endif
 c
       if (ifhess.eq.1) then
@@ -3123,6 +3747,13 @@ c
          hess(1) = cd*(h2z*xdiff*xdiff-rr*h1)
          hess(2) = cd*(h2z*xdiff*ydiff      )
          hess(3) = cd*(h2z*ydiff*ydiff-rr*h1)
+c         ctheta=xdiff/r
+c         stheta=ydiff/r
+c         cd = (wavek*charge*ima4inv/r)
+c         h2z=(-z*h0+2*h1)
+c         hess(1) = cd*(h2z*ctheta*ctheta-h1)
+c         hess(2) = cd*(h2z*ctheta*stheta   )
+c         hess(3) = cd*(h2z*stheta*stheta-h1)
       endif
 c
       endif
@@ -3175,218 +3806,6 @@ c
 c
       endif
 c
-      return
-      end
-c
-c
-c 
-c**********************************************************************
-      subroutine mkmptemp(mptemp,theta,jval,nterms)
-c**********************************************************************
-c
-c     This subroutine computes the complex terms in a partial
-c     wave expansion:
-c                       J_n(k r) exp(i n theta)
-c
-c-----------------------------------------------------------------------
-c     INPUT:
-c
-c     theta   :    angular argument
-c     jval    :    array of J_n values
-c     nterms  :    order of expansion is [-nterms-2:nterms+2]
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     mptemp  :    J_n(kr)*exp(i n theta)
-c
-c
-      implicit real *8 (a-h,o-z)
-      complex *16 mptemp(-nterms-2:nterms+2)
-      complex *16 jval(0:nterms+2)
-      real *8 theta
-      complex *16 ima,zfac,zfac2,zmull,zmullinv
-      data ima/(0.0d0,1.0d0)/
-c
-      mptemp(0)=jval(0)
-      zfac = exp(ima*theta)
-      zfac2 = -dconjg(zfac)
-      zmull = zfac
-      zmullinv = zfac2
-      do n=1,nterms+2
-         mptemp(n)=jval(n)*zmull
-         mptemp(-n)=jval(n)*zmullinv
-         zmull = zmull*zfac
-         zmullinv = zmullinv*zfac2
-      enddo
-      return
-      end
-c
-c
-c
-       subroutine mkmpole12(mpolex,mpoley,ifhess,mpolexx,
-     1               mpolexy,mpoleyy,mpole,zk,rscale,nterms)
-c
-c     This subroutine converts multipole expansion for
-c     potential into expansions for various derivatives.
-c
-c-----------------------------------------------------------------------
-c     INPUT:
-c
-c     ifhess  :    flag determines whether 2nd derivs are desired.
-c     mpole   :    multipole expansion 
-c     zk      :    Helmholtz parameter
-c     rscale  :    scaling parameter for expansion
-c     nterms  :    order of expansion
-c                  for mpole [-nterms:nterms] 
-c                  for mpolex,mpoley [-nterms-1:nterms+1] 
-c                  for 2nd derivs [-nterms-2:nterms+2] 
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     mpolex,mpoley   : expansions for x,y derivatives
-c     mpolexx,mpolexy,
-c     mpoleyy         : expansions for 2nd derivatives if requested
-c
-c
-c
-       implicit real *8 (a-h,o-z)
-       complex *16 mpolex(-nterms-1:nterms+1)
-       complex *16 mpoley(-nterms-1:nterms+1)
-       complex *16 mpolexx(-nterms-2:nterms+2)
-       complex *16 mpolexy(-nterms-2:nterms+2)
-       complex *16 mpoleyy(-nterms-2:nterms+2)
-       complex *16 mpole(-nterms:nterms)
-       complex *16 ima,zk
-       data ima/(0.0d0,1.0d0)/
-c
-       do i=-nterms-1,nterms+1
-          mpolex(i)=0
-          mpoley(i)=0
-       enddo
-       do i=-nterms,nterms
-          if (i.le.0) then
-             mpolex(i-1)=mpolex(i-1)+zk/2*rscale*mpole(i)
-             mpoley(i-1)=mpoley(i-1)+zk/2*(ima)*rscale*mpole(i)
-          else
-             mpolex(i-1)=mpolex(i-1)+zk/2/rscale*mpole(i)
-             mpoley(i-1)=mpoley(i-1)+zk/2*(ima)/rscale*mpole(i)
-          endif
-          if( i .ge. 0 ) then
-             mpolex(i+1)=mpolex(i+1)-zk/2*rscale*mpole(i)
-             mpoley(i+1)=mpoley(i+1)+zk/2*(ima)*rscale*mpole(i)
-          else
-             mpolex(i+1)=mpolex(i+1)-zk/2/rscale*mpole(i)
-             mpoley(i+1)=mpoley(i+1)+zk/2*(ima)/rscale*mpole(i)
-          endif
-       enddo
-c
-       if (ifhess.eq.1) then
-          do i=-nterms-2,nterms+2
-             mpolexx(i)=0
-             mpolexy(i)=0
-             mpoleyy(i)=0
-          enddo
-          do i=-nterms+1,nterms+1
-             if (i.le.0) then
-                mpolexx(i-1)=mpolexx(i-1)+zk/2*rscale*mpolex(i)
-                mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)*rscale*mpolex(i)
-                mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)*rscale*mpoley(i)
-             else
-                mpolexx(i-1)=mpolexx(i-1)+zk/2/rscale*mpolex(i)
-                mpolexy(i-1)=mpolexy(i-1)+zk/2*(ima)/rscale*mpolex(i)
-                mpoleyy(i-1)=mpoleyy(i-1)+zk/2*(ima)/rscale*mpoley(i)
-             endif
-             if (i.ge.0) then
-                mpolexx(i+1)=mpolexx(i+1)-zk/2*rscale*mpolex(i)
-                mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)*rscale*mpolex(i)
-                mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)*rscale*mpoley(i)
-             else
-                mpolexx(i+1)=mpolexx(i+1)-zk/2/rscale*mpolex(i)
-                mpolexy(i+1)=mpolexy(i+1)+zk/2*(ima)/rscale*mpolex(i)
-                mpoleyy(i+1)=mpoleyy(i+1)+zk/2*(ima)/rscale*mpoley(i)
-             endif
-          enddo
-       endif
-       return
-       end
-
-      subroutine taevals(mpole,mpolex,mpoley,mpolexx,mpolexy,mpoleyy,
-     1                   rscale,nterms,jval,mptemp,pot,
-     2                   ifgrad,grad,ifhess,hess,ima4inv)
-c
-c-----------------------------------------------------------------------
-c     INPUT:
-c
-c     mpole           : multipole expansion 
-c     mpolex,mpoley   : expansions for x,y derivatives if requested
-c     mpolexx,mpolexy,
-c     mpoleyy         : expansions for 2nd derivatives if requested
-c     rscale          :    scaling parameter for expansion
-c     nterms          :    order of expansion
-c                          for mpole [-nterms:nterms] 
-c                          for mpolex,mpoley [-nterms-1:nterms+1] 
-c                          for 2nd derivs [-nterms-2:nterms+2] 
-c     jval            : Bessel expansion values
-c     mptemp          : J_n exp(in theta) values for target from
-c                       prior call to mkmptemp
-c     ifgrad          : flag to request gradient computation
-c     ifhess          : flag to request Hessian computation
-c     ima4inv         : scaling factor (1/4i)
-c-----------------------------------------------------------------------
-c     OUTPUT:
-c
-c     pot             : potential
-c     grad            : gradient (if requested)  (pot_x,pot_y)
-c     hess            : Hessian (if requested) (pot_xx,pot_xy,pot_yy)
-c
-c
-      implicit real *8 (a-h,o-z)
-      complex *16 mpole(-nterms:nterms)
-      complex *16 mptemp(-nterms-2:nterms+2)
-      complex *16 mpolex(-nterms-1:nterms+1)
-      complex *16 mpoley(-nterms-1:nterms+1)
-      complex *16 mpolexx(-nterms-2:nterms+2)
-      complex *16 mpolexy(-nterms-2:nterms+2)
-      complex *16 mpoleyy(-nterms-2:nterms+2)
-      complex *16 jval(0:nterms+3)
-      complex *16 pot,grad(2),hess(3)
-      complex *16 ima4inv
-c
-      pot=jval(0)*mpole(0)
-      do n=1,nterms
-         pot=pot+mpole(n)*mptemp(n)+mpole(-n)*mptemp(-n)
-      enddo
-      pot=pot*ima4inv
-c
-      if (ifgrad .eq. 1) then
-         grad(1)=0
-         grad(2)=0
-         grad(1)=jval(0) *mpolex(0)
-         grad(2)=jval(0) *mpoley(0)
-         do n=1,nterms+1
-            grad(1)=grad(1)+mpolex(n)*mptemp(n)+mpolex(-n)*mptemp(-n)
-            grad(2)=grad(2)+mpoley(n)*mptemp(n)+mpoley(-n)*mptemp(-n)
-         enddo
-         grad(1)=grad(1)*ima4inv
-         grad(2)=grad(2)*ima4inv
-      endif
-c
-      if (ifhess .eq. 1) then
-         hess(1)=0
-         hess(2)=0
-         hess(3)=0
-         hess(1)=jval(0) *mpolexx(0)
-         hess(2)=jval(0) *mpolexy(0)
-         hess(3)=jval(0) *mpoleyy(0)
-         do n=1,nterms+2
-            hess(1)=hess(1)+mpolexx(n)*mptemp(n)+mpolexx(-n)*mptemp(-n)
-            hess(2)=hess(2)+mpolexy(n)*mptemp(n)+mpolexy(-n)*mptemp(-n)
-            hess(3)=hess(3)+mpoleyy(n)*mptemp(n)+mpoleyy(-n)*mptemp(-n)
-         enddo
-         hess(1)=hess(1)*ima4inv
-         hess(2)=hess(2)*ima4inv
-         hess(3)=hess(3)*ima4inv
-      endif
       return
       end
 c

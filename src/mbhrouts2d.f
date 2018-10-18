@@ -1,16 +1,9 @@
-cc Copyright (C) 2017: Travis Askham, Leslie Greengard
-cc Contact: askhamwhat@gmail.com
+cc Copyright (C) 2017: Travis Askham, Leslie Greengard, Zydrunas Gimbutas
+cc email: askhamwhat@gmail.com      
 cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
+cc This software is being released under a modified FreeBSD license
+cc (see licenses folder in home directory). 
+
 
       subroutine mbhpotgrad2dall_cdq(beta,source,ns,ifcharge,
      1     charge,ifdipole,dipstr,dipvec,ifquad,quadstr,quadvec,
@@ -2267,8 +2260,7 @@ c     rad             : radius of circle where field values are matched
 c     zcirc(2,nterms) : precomputed evenly-spaced points on unit circle
 c     beta            : the modified biharmonic parameter
 c     nterms          : order of multipole expansion
-c     wsave(nterms)   : precomputed array returned by DFFTI from the
-c                       FFT library FFTPACK
+
 c     work(*)         : work array. recommended length 16*nterms + 500
 c
 c     OUTPUT:
@@ -2538,8 +2530,7 @@ c     rad             : radius of circle where field values are matched
 c     zcirc(2,nterms) : precomputed evenly-spaced points on unit circle
 c     beta            : the modified biharmonic parameter
 c     nterms          : order of multipole expansion
-c     wsave(nterms)   : precomputed array returned by DFFTI from the
-c                       FFT library FFTPACK
+
 c     work(*)         : work array. recommended length 16*nterms + 500
 c
 c     OUTPUT:
@@ -2608,128 +2599,6 @@ c
       return
       end
 
-      subroutine mbh2dformta_disc(beta,rscale,u,up,rad,npts,mbhloc,lloc,
-     1     nterms,wsave,ier)
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c     INPUT:
-c
-c     rscale          : the scaling factor
-c     rad             : radius of circle where field values are matched
-c     beta            : the modified biharmonic parameter
-c     npts            : number of points on circle (where u,up sampled)
-c     u(npts)         : values of field at npts on circle of radius rad
-c     up(npts)        : values of normal derivative of field at npts on 
-c                       circle of radius rad
-c     nterms          : order of multipole expansion
-c     wsave(nterms)   : precomputed array returned by DFFTI from the
-c                       FFT library FFTPACK
-c
-c     OUTPUT:
-c
-c     ier             : error flag. for no error, ier = 0
-c     mbhloc          : coefficients for difference-type functions
-c     lloc            : coefficients for z^k functions
-c
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-      implicit none
-c     global
-      integer ier, nterms, npts
-      real *8 rscale, rad, beta
-      real *8 u(*), up(*), wsave(*)
-      complex *16 mbhloc(0:nterms), lloc(0:nterms)
-c     local
-      integer i, j, jmax, ntermstemp, ierge, ifders
-      real *8 cu(200), cup(200), dnorm
-      real *8 diffs(0:200), ders(0:200), ivec(0:200), pow(0:200)
-      real *8 dpow(0:200), amat(2,2), y(2), x(2)
-      complex *16 eye, zero
-      data eye /(0.0d0,1.0d0)/
-      data zero /(0.0d0,0.0d0)/
-
-      do i = 1,npts
-         cu(i) = u(i)
-         cup(i) = up(i)
-      enddo
-
-c     fourier transform u and up values
-
-      call dfftf(npts,cu,wsave)
-      call dfftf(npts,cup,wsave)
-
-      dnorm = 2.0d0/npts
-
-      cu(1) = cu(1)/npts
-      cup(1) = cup(1)/npts
-
-      do i = 2,npts
-         cu(i) = cu(i)*dnorm
-         cup(i) = cup(i)*dnorm
-      enddo
-
-      jmax = (npts-1)/2
-
-      ntermstemp = min(nterms,jmax)
-
-c     obtain values and derivatives of basis functions
-c     for radius of circle
-
-      call mbh2d_rk(pow,dpow,rad,beta,rscale,ntermstemp)
-
-      ifders = 1
-      call diffszkik_fast(rad,beta,rscale,diffs,ifders,ders,ivec,
-     1     ntermstemp)
-
-c     compute zero-th mode coefficients
-
-      amat(1,1) = diffs(0)
-      amat(2,1) = ders(0)
-      amat(1,2) = pow(0)
-      amat(2,2) = dpow(0)
-
-      y(1) = cu(1)
-      y(2) = cup(1)
-      call mbh2d_ge22cp(ierge,amat,x,y)  
-
-      mbhloc(0) = x(1)
-      lloc(0) = x(2)
-
-      do j = 1,ntermstemp
-
-c     compute coefficients for higher modes
-c     these are separated into cos(j theta) and 
-c     sin(j theta) parts by DFFTF
-
-         amat(1,1) = diffs(j)
-         amat(2,1) = ders(j)
-         amat(1,2) = pow(j)
-         amat(2,2) = dpow(j)
-
-         y(1) = cu(2*j)
-         y(2) = cup(2*j)
-
-         call mbh2d_ge22cp(ierge,amat,x,y)  
-
-         mbhloc(j) = x(1)
-         lloc(j) = x(2)
-
-         y(1) = cu(2*j+1)
-         y(2) = cup(2*j+1)
-
-         call mbh2d_ge22cp(ierge,amat,x,y)  
-
-         mbhloc(j) = mbhloc(j) - eye*x(1)
-         lloc(j) = lloc(j) - eye*x(2)
-
-      enddo
-
-      do j = ntermstemp+1,nterms
-         mbhloc(j) = zero
-         lloc(j) = zero
-      enddo
-
-      return
-      end
       
 
 
@@ -2751,8 +2620,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -2959,8 +2827,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3047,8 +2914,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3231,8 +3097,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3449,8 +3314,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3666,8 +3530,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3735,8 +3598,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -3937,8 +3799,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -4181,8 +4042,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -5195,8 +5055,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -5373,8 +5232,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -5455,8 +5313,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:
@@ -5607,8 +5464,7 @@ c                         for new expansion
 c     nterms2           : number of terms in original expansion
 c     zcirc2(2,nterms2) : precomp'd evenly-spaced points on unit circle
 c     beta              : the modified biharmonic parameter
-c     wsave2(nterms2)   : precomputed array returned by DFFTI from the
-c                         FFT library FFTPACK
+
 c     work(*)           : work array. recommended length 16*nterms+500
 c
 c     OUTPUT:

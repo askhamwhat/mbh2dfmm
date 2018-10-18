@@ -1,16 +1,8 @@
-cc Copyright (C) 2010-2011: Leslie Greengard and Zydrunas Gimbutas
+cc Copyright (C) 2009-2012: Leslie Greengard and Zydrunas Gimbutas
 cc Contact: greengard@cims.nyu.edu
 cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
+cc This software is being released under a modified FreeBSD license
+cc (see licenses folder in home directory). 
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c    $Date$
@@ -1311,7 +1303,7 @@ c
         complex *16 z,z0,ima, zmul,zinv,ztemp1,ztemp2
         real *8 carray(0:ldc,0:ldc)
 ccc        complex *16, allocatable :: z0powm1(:), z0powm2(:)
-        complex *16 z0powm1(0:1000), z0powm2(0:1000)
+        complex *16 z0powm1(0:ldc), z0powm2(0:ldc)
         complex *16 hexp1(0:1000)
 c
         data ima/(0.0d0,1.0d0)/

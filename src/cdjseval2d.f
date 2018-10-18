@@ -1,16 +1,9 @@
-cc Copyright (C) 2009-2011: Leslie Greengard and Zydrunas Gimbutas
+cc Copyright (C) 2009-2012: Leslie Greengard and Zydrunas Gimbutas
 cc Contact: greengard@cims.nyu.edu
 cc 
-cc This program is free software; you can redistribute it and/or modify 
-cc it under the terms of the GNU General Public License as published by 
-cc the Free Software Foundation; either version 2 of the License, or 
-cc (at your option) any later version.  This program is distributed in 
-cc the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
-cc even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-cc PARTICULAR PURPOSE.  See the GNU General Public License for more 
-cc details. You should have received a copy of the GNU General Public 
-cc License along with this program; 
-cc if not, see <http://www.gnu.org/licenses/>.
+cc This software is being released under a modified FreeBSD license
+cc (see COPYING in home directory). 
+c
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c    $Date: 2011-02-22 17:34:23 -0500 (Tue, 22 Feb 2011) $
@@ -25,62 +18,55 @@ c**********************************************************************
       implicit real *8 (a-h,o-z)
 c**********************************************************************
 c
-c     PURPOSE:
+c PURPOSE:
 c
-c     This subroutine evaluates the first NTERMS  Bessel 
-c     functions and if required, their derivatives.
-c     It incorporates a scaling parameter SCALE so that
+c	This subroutine evaluates the first NTERMS  Bessel 
+c	functions and if required, their derivatives.
+c	It incorporates a scaling parameter SCALE so that
 c       
-c	fjs_n(z)= j_n(z)/SCALE^n
-c	fjder_n(z)= \frac{\partial fjs_n(z)}{\partial z}
+c		fjs_n(z)=j_n(z)/SCALE^n
+c		fjder_n(z)=\frac{\partial fjs_n(z)}{\partial z}
 c
-c     NOTE: The scaling parameter SCALE is meant to be used when
-c           abs(z) < 1, in which case we recommend setting
-c	    SCALE = abs(z). This prevents the fjs_n from 
-c           underflowing too rapidly. Otherwise, set SCALE=1.
-c	    Do not set SCALE = abs(z) if z could take on the 
-c           value zero. 
-c           In an FMM, when forming an expansion from a collection of
-c           sources, set SCALE = min( abs(k*r), 1)
-c           where k is the Helmholtz parameter and r is the box dimension
-c           at the relevant level.
+c	NOTE: The scaling parameter SCALE is meant to be used when
+c             abs(z) < 1, in which case we recommend setting
+c	      SCALE = abs(z). This prevents the fjs_n from 
+c             underflowing too rapidly.
+c	      Otherwise, set SCALE=1.
+c	      Do not set SCALE = abs(z) if z could take on the 
+c             value zero. 
+c             In an FMM, when forming an expansion from a collection of
+c             sources, set SCALE = min( abs(k*r), 1)
+c             where k is the Helmholtz parameter and r is the box dimension
+c             at the relevant level.
 c
-c    INPUT:
+c INPUT:
 c
-c    nterms    (integer): order of expansion of output array fjs 
-c                         nterms should be greater than 1.
+c    nterms (integer): order of expansion of output array fjs 
 c    z     (complex *16): argument of the  Bessel functions
-c    scale     (real *8): scaling factor (discussed above)
-c    ifder     (integer): flag indicating whether to calculate "fjder"
+c    scale    (real *8) : scaling factor (discussed above)
+c    ifder  (integer): flag indicating whether to calculate "fjder"
 c		          0	NO
 c		          1	YES
-c    lwfjs     (integer): upper limit of input arrays 
+c    lwfjs  (integer): upper limit of input arrays 
 c                         fjs(0:1) and iscale(0:1)
-c                         lwfjs must be large enough to run the 
-c                         recurrence from nterms upward until
-c                         the value of fjs has blown up by a factor
-c                         of 1.0d40 (a parameter hardwired as
-c                         upbound2 below). lwfjs should be much larger
-c                         than nterms. 
-c                         It is reasonable to safe to set lwfjs
-c                         to nterms + 500. If that is not sufficient,
-c                         an error code is returned (ier=8).
-c    iscale    (integer): integer workspace used to keep track of 
+c    iscale (integer): integer workspace used to keep track of 
 c                         internal scaling
 c
-c    OUTPUT:
+c OUTPUT:
 c
-c    ier       (integer): error return code 
+c    ier    (integer): error return code 
 c                         ier=0 normal return;
 c                         ier=8 insufficient array dimension lwfjs
 c    fjs   (complex *16): array of scaled Bessel functions.
 c    fjder (complex *16): array of derivs of scaled Bessel functions.
-c    ntop      (integer): highest index in arrays fjs that is nonzero
+c    ntop  (integer) : highest index in arrays fjs that is nonzero
+c
+c       NOTE, that fjs and fjder arrays must be at least (nterms+2)
+c       complex *16 elements long.
 c
 c
-c
-      integer iscale(0:lwfjs)
-      complex *16 wavek,fjs(0:lwfjs),fjder(0:nterms)
+      integer iscale(0:1)
+      complex *16 wavek,fjs(0:1),fjder(0:1)
       complex *16 z,zinv,com,fj0,fj1,zscale,ztmp
 c
       complex *16 psi,zmul,zsn,zmulinv
@@ -93,9 +79,8 @@ c
 c ... Initializing ...
 c
       ier=0
-ccc      call prinf(' ifder is *',ifder,1)
 c
-c     set to asymptotic values if argument is sufficiently small
+c       set to asymptotic values if argument is sufficiently small
 c
       if (abs(z).lt.tiny) then
          fjs(0) = done
@@ -113,17 +98,14 @@ c
          RETURN
       endif
 c
-c ... Step 1: carry out upward recursion starting at nterms until the 
-c     magnitude has grown by uppound2 = 10^40. The top value of
-c     the index is stored as NTOP. That becomes the point from which 
-c     the downward recurrence begins.
+c ... Step 1: recursion up to find ntop, starting from nterms
 c
       ntop=0
       zinv=done/z
-      fjs(nterms)=done
-      fjs(nterms-1)=zero
+      fjs(nterms+1)=done
+      fjs(nterms)=zero
 c
-      do 1200 i=nterms,lwfjs
+      do 1200 i=nterms+1,lwfjs
          dcoef=2*i
          ztmp=dcoef*zinv*fjs(i)-fjs(i-1)
          fjs(i+1)=ztmp
@@ -135,17 +117,15 @@ c
          endif
  1200 continue
  1300 continue
-      if (ntop.eq.0) then
+      if (ntop.le.2) then
          ier=8
          return
       endif
 c
 c ... Step 2: Recursion back down to generate the unscaled jfuns:
-c             This is the stable but growing direction for the recurrence.
-c             To avoid overflow, if the magnitude exceeds UPBOUND2, 
-c             we rescale and continue the recursion (saving the order 
-c             at which rescaling occurred in array iscale for subsequent 
-c             correction).
+c             if magnitude exceeds UPBOUND2, rescale and continue the 
+c	      recursion (saving the order at which rescaling occurred 
+c	      in array iscale.
 c
       do i=0,ntop
          iscale(i)=0
@@ -153,18 +133,18 @@ c
 c
       fjs(ntop)=zero
       fjs(ntop-1)=done
-      do i=ntop-1,1,-1
+      do 2200 i=ntop-1,1,-1
 	 dcoef=2*i
          ztmp=dcoef*zinv*fjs(i)-fjs(i+1)
          fjs(i-1)=ztmp
 c
          dd = dreal(ztmp)**2 + dimag(ztmp)**2
-         if (dd.gt.upbound2) then
-            fjs(i) = fjs(i)*upbound2inv
-            fjs(i-1) = fjs(i-1)*upbound2inv
+         if (dd.gt.UPBOUND2) then
+            fjs(i) = fjs(i)*UPBOUND2inv
+            fjs(i-1) = fjs(i-1)*UPBOUND2inv
             iscale(i) = 1
          endif
-      enddo
+ 2200 continue
 c
 c ...  Step 3: go back up to the top and make sure that all
 c              Bessel functions are scaled by the same factor
@@ -177,7 +157,7 @@ c
       sctot = 1.0d0
       do i=1,ntop
          sctot = sctot*scalinv
-         if(iscale(i-1).eq.1) sctot=sctot*upbound2inv
+         if(iscale(i-1).eq.1) sctot=sctot*UPBOUND2inv
          fjs(i)=fjs(i)*sctot
       enddo
 c
@@ -215,11 +195,11 @@ c
          fjs(nterms+1)=fjs(nterms+1)*ztmp
 c
          fjder(0)=-fjs(1)*scale
-         dc1=0.5d0
-         dc2=done-dc1
-         dc1=dc1*scalinv
-         dc2=dc2*scale
          do i=1,nterms
+            dc1=0.5d0
+            dc2=done-dc1
+            dc1=dc1*scalinv
+            dc2=dc2*scale
             fjder(i)=dc1*fjs(i-1)-dc2*fjs(i+1)
          enddo
       endif
