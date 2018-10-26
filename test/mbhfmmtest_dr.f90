@@ -2,8 +2,8 @@
 program mbhfmmtest
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!
-!
+! This routine tests the fmm against direct calculation
+! Sets up charges on an ellipse and evaluates at targets inside
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   implicit real *8 (a-h,o-z)

@@ -12,17 +12,110 @@ C***********************************************************************
      5     octstrsort, octvecsort, isave, lisave, dsave, ldsave, 
      6     csave, lcsave)
 c***********************************************************************
+c
+c     Form the multipole expansions for the modified biharmonic Green's
+c     function
+c      
+c         G(x,y) = (S_beta(r) - S_0(r))/beta^2
+c
+c     where S_beta(r) = K_0(beta r)/(2*pi) is the fundamental solution
+c     of the Yukawa equation and S_0(r) = log(r)/(2*pi) is the
+c     fundamental solution of the Laplace equation, with
+c     r = sqrt( (x(1)-y(1))**2 + (x(2)-y(2))**2 )
+c
+c     The expansions represent the sum
+c
+c     u(x) = sum_j charge(j)*G(x,y(j))
+c     + dipstr(j)*(G_{y1}(x,y(j))*dipvec(1,j) + G_{y2}*dipvec(2,j))
+c     + quadstr(j)*(G_{y1y1}(x,y(j))*quadvec(1,j)
+c             + G_{y1y2}*quadvec(2,j) + G_{y2y2}*quadvec(2,j))
+c     + octstr(j)*(G_{y1y1y1}(x,y(j))*octvec(1,j)
+c             + G_{y1y1y2}*octvec(2,j) + G_{y1y2y2}*octvec(2,j)
+c             + G_{y1y2y2}*octvec(2,j))
+c     
+c     where the subscripts denote derivatives of the Green's function
+c     and the y(j) are points in R^2 contained in the srcsort input
+c     vector (the word sort is dropped from the charge, dipstr, etc
+c     vectors above for notational convenience).
+c
+c     On input, the sources should be in a sorted order so that
+c     setting ii = isrcladder(1,j) and jj = isrcladder(2,j) means
+c     that sources ii through jj are in box i = iboxlev(j) of the tree
+c     (jj < ii means that box i has no sources). Note that chargesort,
+c     dipstrsort, etc are assumed to also be sorted in this way.
+c
+c     INPUT:
+c     
+C 
+C     BETA - real *8, modified biharmonic parameter
+C     ICOLBOX, IROWBOX, NBOXES, LEVELBOX, IPARENTBOX, IBOXLEV,
+c     NBLEVEL, ISTARTLEV, ICHILDBOX - all 
+C     define the tree data structure in the standard lrtree format.
+c     See lrtree.f for construction routines
+c     IFALLTARG - if this flag is set to one, it assumes targets
+c     in later evaluations may appear in any leaf box
+c     LOCALONOFF - if ifalltarg is not set to one, localonoff is
+c     a per-box flag indicating whether local expansions
+c     are desired for that box (so that evaluations can be performed
+c     there later).
+c     ZLL - the bottom left of the highest level box in the tree
+c     BLENGTH - the side length of the highest level box in tree
+c     NS - the number of sources
+c     SRCSORT - real *8 array (2,NS) containing the sources in
+c     sorted order as described above
+c     ISRCLADDER - as described above
+c     IFCHARGE - include charges in multipole expansions
+c     CHARGESORT - real *8 array(NS) sorted charge strengths,
+c     as in sum above
+c     IFDIPOLE - include dipole in multipole expansions
+c     DIPSTRSORT - real *8 array(NS) sorted dipole strengths,
+c     as in sum above
+c     DIPVECSORT - real *8 array(2, NS)sorted dipole direction
+c     vector, as in sum above      
+c     IFQUAD - include quadrupole in multipole expansions
+c     QUADSTRSORT - real *8 array(NS) sorted quad strengths,
+c     as in sum above
+c     QUADVECSORT - real *8 array(3,NS) sorted quad direction
+c     vector, as in sum above      
+c     IFOCT - include octopole in multipole expansions
+c     OCTSTRSORT - real *8 array(NS) sorted octopole strengths,
+c     as in sum above
+c     OCTVECSORT - real *8 array(4,NS) sorted octopole direction
+c     vector, as in sum above
+c     LISAVE, LDSAVE, LCSAVE - the lengths of the ISAVE,
+c     DSAVE, and CSAVE output arrays, respectively (which
+c     are integer, real, and complex type, respectively)
+c     LISAVE, LDSAVE, LCSAVE - if any of these values are
+c     negative on input, the subroutine only runs in a query mode
+c     (no multipoles formed) and on return the negative values
+c     are replaced with the minimum length needed for ISAVE,
+c     DSAVE, CSAVE, accordingly
+c
+c     On output, the vectors isave, dsave, csave contain
+c     the full description required to evaluate the sum
+c     at any point within the top level box using MBHFMM2D_TARG
+c
+c     OUTPUT:
+c
+c     IER - error flag:
+c     0 = normal operation (this is not super robust for now...)
+c     1 = LISAVE insufficient
+c     1 = LDSAVE insufficient
+c     3 = LCSAVE insufficient
+c     ISAVE, DSAVE, CSAVE - if not in query mode these arrays
+c     contain the multipole expansions needed by the evaluation
+c     routines MBHFMM2D_TARG, etc.
+c     LISAVE, LDSAVE, LCSAVE - if any of these values are
+c     negative on input, the subroutine only runs in a query mode
+c     (no multipoles formed) and on return the negative values
+c     are replaced with the minimum length needed for ISAVE,
+c     DSAVE, CSAVE, accordingly
+      
+      
 C     The following subroutine carves up the workspace array before 
-C     it is sent to the ADAPFMM4 subroutine, where the actual work 
+C     it is sent to the mbhfmm2d_form1 subroutine, where the actual work 
 C     is done.
-C
-C     ifgrad = 1, compute gradient
-C     ifhess = 1, compute Hessian (hess(i,k,j) is the ith entry of
-C     the Hessian for the kth gridpoint of the jth box, i = 1 is 
-C     pot_xx, i = 2 is pot_xy, i = 3 is pot_yy)
-C
-C     ICOLBOX, IROWBOX, NBOXES, LEVELBOX, IPARENTBOX, AND ICHILDBOX
-C     define the tree data structure.
+      
 C***********************************************************************
       implicit none
 C-----Global variables
@@ -52,7 +145,9 @@ c-----Local variables
       integer, allocatable :: iwork(:)
       real *8, allocatable :: work(:)
       complex *16, allocatable :: cwork(:)
-C   
+C
+      ier = 0
+      
       if(iprec .eq. 0)then
         nterms = 8
         nnodes = 8
@@ -190,55 +285,8 @@ c     perform fmm forming stage
       end
 C
 c********************************************************************
-c      subroutine adapfmm4
+c      subroutine mbhfmm2d_form1
 c********************************************************************
-C     The main subroutine of multipole algorithm. Two passes are
-C     executed. In the first (upward) pass, multipole expansions for
-C     all boxes at all levels are computed. In the second (downward) 
-C     pass, interactions are computed at successively finer levels.
-C
-C     INPUT:
-C
-C     NLEV is the finest level
-C     XNODES is a blank array that is set to 
-C            the nodes in the plane wave expansions
-C     WNODES is a blank array that is set to 
-C            the weights in the plane wave expansions
-C     RATIO  is a blank array that is set to 
-C            the ratio of the weights and nodes
-C     ZS represents the shifts for exponential expansions
-C     ZSEAST east shifts for exponential expansions
-C     ZSWEST west shifts for exponential expansions
-C     ZSNORTH north shifts for exponential expansions
-C     ZSSOUTH south shifts for exponential expansions
-C     COMP is a work array that will be used for storing
-C             planewave/local operators
-C     NTERMS is the order of the multipole expansions
-C     NNODES is the order of the plane wave expansions
-C     MPOLE  array of multipole expansions
-C     LOCEXP array of local expansions
-C     EXPN   array of north plane wave expansions 
-C     EXPS   array of south plane wave expansions 
-C     EXPE   array of east plane wave expansions 
-C     EXPW   array of west plane wave expansions 
-C     C      array of binomial coefficients
-
-C     LEVELBOX array of the level of each box
-C     IPARENTBOX denotes the parent of each box
-C     ICHILDBOX denotes the four children of each box
-C     ICOLBOX denotes the column of each box
-C     IROWBOX denotes the row of each box
-C     ICOLLEAGBOX denotes the colleagues of a given box
-C     NBOXES is the total number of boxes
-C     NBLEVEL is the total number of boxes per level
-C     IBOXLEV is the array in which the boxes are arranged
-C     ISTARTLEV is the pointer to where each level begins in the
-C               IBOXLEV array
-C
-C     OUTPUT:
-C  
-C     POT represents the solution (defined on the same tree as the
-C         right hand side on input)
 C
 C********************************************************************
       subroutine mbhfmm2d_form1(beta,nlev,levelbox,iparentbox,
@@ -1061,7 +1109,42 @@ C$OMP END PARALLEL DO
      5     nt, targ, ifpot, pot, ifgrad, grad, ifhess, hess)
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
-c     
+c     Given a multipole description as created by MBHFMM2D_FORM in
+c     isave, dsave, csave (along with the tree structure and source
+c     info as described in MBHFMM2D_FORM), this routine evaluates
+c
+c     u(x) = sum_j charge(j)*G(x,y(j))
+c     + dipstr(j)*(G_{y1}(x,y(j))*dipvec(1,j) + G_{y2}*dipvec(2,j))
+c     + quadstr(j)*(G_{y1y1}(x,y(j))*quadvec(1,j)
+c             + G_{y1y2}*quadvec(2,j) + G_{y2y2}*quadvec(2,j))
+c     + octstr(j)*(G_{y1y1y1}(x,y(j))*octvec(1,j)
+c             + G_{y1y1y2}*octvec(2,j) + G_{y1y2y2}*octvec(2,j)
+c             + G_{y1y2y2}*octvec(2,j))
+c
+c     at each x in the (2,NT) array targ.
+c
+c     INPUT:
+c
+c     FOR MOST VARIABLES: see MBHFMM2D_FORM
+c     NT: number of targets
+c     TARG: real *8 (2,NT) array of target locations (should be
+c     inside top level box)
+c     IFPOT: evaluate potential (u(x))
+c     IFGRAD: evaluate gradient (\nabla u(x))
+c     IFHESS: evaluate Hessian (u_{x1x1}(x),u_{x1x2}(x),u_{x2x2}(x))
+c
+c     OUTPUT:
+c
+c     POT: real *8 (NT) array, POT(i) = u(targ(1:2,i))
+c     GRAD: real *8 (2,NT) array,
+c     GRAD(1:2,i) = (u_{x1}(targ(1:2,i)),u_{x2}(targ(1:2,i)))
+c     HESS: real *8 (3,NT) array, 
+c     HESS(1:3,i) = (u_{x1x1}(targ(1:2,i)),u_{x1x2}(targ(1:2,i)),
+c                         u_{x1x2}(targ(1:2,i)))      
+c
+c     TODO:
+c
+c     Implement error flag, currently IER does nothing...
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       implicit none
@@ -1291,7 +1374,8 @@ C$OMP END PARALLEL DO
      6     ifder3, der3)
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
-c     
+c     SAME AS MBHFMM2D_TARG but also includes the ability to evaluate
+c     3rd order derivatives
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       implicit none
@@ -1534,6 +1618,11 @@ C$OMP END PARALLEL DO
      6     ifder3, der3)
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
+c     SAME AS MBHFMM2D3_TARG, targets are described as the sum of
+c     targ(1:2,i) and centers(1:2,i). The idea is to avoid cancellation
+c     when evaluating targets that lie on a small disc around points
+c     in the domain (this was part of a quick and dirty QBX
+c     implementation
 c     
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

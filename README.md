@@ -7,8 +7,10 @@ modified biharmonic potentials. Both high order charges
 (up to order 3) are allowed, which facilitates Stokeslet
 and stresslet-like formulations.
 
-NOTE: feature requests, bug reports, and merge requests
-will be largely ignored for this repository. This
+NOTE: feature requests, bug reports, and pull requests
+will be largely ignored for this repository (with the exception
+of adding proper compile flags to the Makefile and
+other compatibility issues). This
 repository is likely to move to a more permanent location
 in the future.
 
@@ -32,4 +34,13 @@ with some standard options are included in the mkfiles
 folder.
 
 ## Using the code
+
+To run the example code, use:
+
+```
+make mbhfmmtest
+```
+
+See the driver for that routine in the test folder
+for example usage.
 
