@@ -7,12 +7,11 @@ modified biharmonic potentials. Both high order charges
 (up to order 3) are allowed, which facilitates Stokeslet
 and stresslet-like formulations.
 
-NOTE: feature requests, bug reports, and pull requests
-will be largely ignored for this repository (with the exception
-of adding proper compile flags to the Makefile and
-other compatibility issues). This
-repository is likely to move to a more permanent location
-in the future.
+NOTE: this code may be hard to use for non-experts
+at this point. Experts can probably grok the usage
+by checking out the example in the test folder.
+Most files aren't super well documented. The main
+file src/mbhfmm2d.f is reasonably documented.
 
 ## Compile instructions
 
