@@ -3,7 +3,6 @@ program mbhfmmtest
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 ! This routine tests the fmm against direct calculation
-! Sets up charges on an ellipse and evaluates at targets inside
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   implicit real *8 (a-h,o-z)
@@ -64,38 +63,64 @@ program mbhfmmtest
 
   pi = 4.0d0*atan(1.0d0)
 
-  a = 1.123d0
-  b = 0.7d0
-
-  xc = 6.1d0
-  yc = -1.3d0
-
-  blength = 3.0d0*max(a,b)
-
-  zll(1) = xc-blength/2.0d0
-  zll(2) = yc-blength/2.0d0
-
-  blength = 1.0d0
-  zll(1:2) = (/ -0.5d0, -0.5d0 /)
 
   ns = 10000
 
-  h = 2.0d0*pi/ns
-
   if (1 .eq. 0) then
-  do i = 1,ns
-     t = (i-1)*h
-     src(1,i) = xc+a*cos(t)
-     src(2,i) = yc+b*sin(t)-.01d0
-     dx = -a*sin(t)
-     dy = b*cos(t)
-     dsdt(i) = sqrt(dx**2+dy**2)
-     rnx(i) = dy/dsdt(i)
-     rny(i) = -dx/dsdt(i)
-     if (ifprint .eq. 1) write(21,*) src(1,i), src(2,i), &
-          rnx(i), rny(i)
-  enddo
+
+     ! ellipse axes
+     a = 1.123d0
+     b = 0.7d0
+
+     ! ellipse center
+     xc = 6.1d0
+     yc = -1.3d0
+
+     ! box length and lower left corner of computational
+     ! domain (a square) should contain all src and targ
+
+     blength = 3.0d0*max(a,b)
+
+     zll(1) = xc-blength/2.0d0
+     zll(2) = yc-blength/2.0d0
+     
+     ! sources
+     h = 2.0d0*pi/ns
+
+     do i = 1,ns
+
+        t = (i-1)*h
+        src(1,i) = xc+a*cos(t)
+        src(2,i) = yc+b*sin(t)-.01d0
+        dx = -a*sin(t)
+        dy = b*cos(t)
+        dsdt(i) = sqrt(dx**2+dy**2)
+        rnx(i) = dy/dsdt(i)
+        rny(i) = -dx/dsdt(i)
+        if (ifprint .eq. 1) write(21,*) src(1,i), src(2,i), &
+             rnx(i), rny(i)
+     enddo
+
+     !targets
+     nt = 2*(1000)
+     ht = 2.0d0*pi/(nt/2)
+     curvenrm = h*dsqrt(a**2+b**2)
+     do i = 1,nt
+        t = (i-1)*ht
+        targ(1,i) = xc+ (a+10.0d0*curvenrm)*cos(t)
+        targ(2,i) = yc+ (b+10.0d0*curvenrm)*sin(t) - .01d0
+        targ(1,i+nt/2) = xc+ (a-10.0d0*curvenrm)*cos(t)
+        targ(2,i+nt/2) = yc+ (b-10.0d0*curvenrm)*sin(t) - .01d0
+     enddo
+     
   else
+
+     ! box length and lower left corner of computational
+     ! domain (a square) should contain all src and targ
+     blength = 1.0d0
+     zll(1:2) = (/ -0.5d0, -0.5d0 /)
+
+     ! sources
      do i = 1,ns
         src(1,i) = zll(1) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
         src(2,i) = zll(2) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
@@ -107,20 +132,8 @@ program mbhfmmtest
         rnx(i) = dy/dsdt(i)
         rny(i) = -dx/dsdt(i)
      enddo
-  endif
 
-  if (1 .eq. 0) then
-     nt = 2*(1000)
-     ht = 2.0d0*pi/(nt/2)
-     curvenrm = h*dsqrt(a**2+b**2)
-     do i = 1,nt
-        t = (i-1)*ht
-        targ(1,i) = xc+ (a+10.0d0*curvenrm)*cos(t)
-        targ(2,i) = yc+ (b+10.0d0*curvenrm)*sin(t) - .01d0
-        targ(1,i+nt/2) = xc+ (a-10.0d0*curvenrm)*cos(t)
-        targ(2,i+nt/2) = yc+ (b-10.0d0*curvenrm)*sin(t) - .01d0
-     enddo
-  else
+     ! targets
      nt = 1000
      do i = 1,nt
         targ(1,i) = zll(1) + 0*blength/4.0d0 + blength*hkrand(0)/4.0d0
@@ -128,6 +141,7 @@ program mbhfmmtest
         targ(1,i) = zll(1) + blength*hkrand(0)
         targ(2,i) = zll(2) + blength*hkrand(0)
      enddo
+     
   endif
 
   do i = 1,nt
