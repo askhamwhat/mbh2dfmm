@@ -1,7 +1,9 @@
-
+using Compat
+using Compat.Printf
 
 include("BoxFMMType.jl")
 include("BoxFMMUtil.jl")
+include("MBHFMM2D.jl")
 
 using PyPlot
 
@@ -13,12 +15,12 @@ nt = 20
 
 # sources on an ellipse, targets inside
 
-src = Array(Float64,2,ns)
+src = Array{Float64}(undef,2,ns)
 srcsort = copy(src)
-isrcsort = Array(Int32,ns)
-targ = Array(Float64,2,nt)
+isrcsort = Array{Int32}(undef,ns)
+targ = Array{Float64}(undef,2,nt)
 targsort = copy(targ)
-itargsort = Array(Int32,nt)
+itargsort = Array{Int32}(undef,nt)
 
 center = [6.1;-1.3]
 

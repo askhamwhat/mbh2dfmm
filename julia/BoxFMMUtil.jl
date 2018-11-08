@@ -29,8 +29,7 @@ function boxfmm2d_formoctvec(der1::Array{Float64},
 end
 
 function boxfmm2d_booltoint32(in::Bool)
-    out = Array{Int32}(1)
-    out[1] = 0
+    out = Int32[0]
     if (in)
         out[1] = 1
     end
@@ -38,8 +37,9 @@ function boxfmm2d_booltoint32(in::Bool)
 end
 
 function boxfmm2d_plot(tree::BoxTree2D)
-    @pyimport matplotlib.patches as patch
+    patch = pyimport("matplotlib.patches")
 
+    
     nlev = tree.nlev
     nblevel = tree.nblevel
     istartlev = tree.istartlev
@@ -61,8 +61,8 @@ function boxfmm2d_plot(tree::BoxTree2D)
             icol = icolbox[ibox]
             irow = irowbox[ibox]
 
-            rect = patch.Rectangle([zll[1]+h*(icol-1),zll[2]+h*(irow-1)],h,h,
-                                   linewidth=2,facecolor="none",edgecolor="black")
+            rect = patch[:Rectangle]([zll[1]+h*(icol-1),zll[2]+h*(irow-1)],h,h,
+                                     linewidth=2,facecolor="none",edgecolor="black")
             ax[:add_patch](rect)
         end
     end

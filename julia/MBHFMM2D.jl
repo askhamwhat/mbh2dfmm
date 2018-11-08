@@ -1,3 +1,5 @@
+using Compat
+using Compat.Libdl
 
 const LIBMBHFMM2D = string(Base.Filesystem.dirname(Base.source_path()), "/../bin/libmbhfmm2d")
 
@@ -7,7 +9,7 @@ include("BoxFMMUtil.jl")
 # Load OpenMP library
 Libdl.dlopen("libgomp", Libdl.RTLD_GLOBAL)
 
-type MBHFMM2DParams
+mutable struct MBHFMM2DParams
 
     # storage of parameters which
     # describe the FMM tree and call
@@ -56,7 +58,7 @@ function MBHFMM2DParams(lambda::Float64,src::Array{Float64,2},
 
 end
 
-type MBHFMM2DStorage
+mutable struct MBHFMM2DStorage
 
     # storage for FMM itself
     
@@ -125,9 +127,9 @@ function MBHFMM2DStorage_init(fmmpars::MBHFMM2DParams,
 
     # initialize isave, dsave, csave to short arrays
 
-    isave = Array{Int32}(1)
-    dsave = Array{Float64}(1)
-    csave = Array{Complex{Float64}}(1)
+    isave = Array{Int32}(undef, 1)
+    dsave = Array{Float64}(undef, 1)
+    csave = Array{Complex{Float64}}(undef, 1)
 
     return MBHFMM2DStorage(tree,ifalltarg,sorted_pts,
                            chargesort,dipstrsort,
@@ -208,7 +210,7 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams,
     ldsave = [convert(Int32,-1)]
     lcsave = [convert(Int32,-1)]    
 
-    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Void,
+    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Cvoid,
            (Ref{Float64},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -231,9 +233,9 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams,
 
     # allocate
 
-    fmmstor.isave = Array{Int32}(lisave[1])
-    fmmstor.dsave = Array{Float64}(ldsave[1])
-    fmmstor.csave = Array{Complex{Float64}}(lcsave[1])
+    fmmstor.isave = Array{Int32}(undef, lisave[1])
+    fmmstor.dsave = Array{Float64}(undef, ldsave[1])
+    fmmstor.csave = Array{Complex{Float64}}(undef, lcsave[1])
 
     isave = fmmstor.isave
     dsave = fmmstor.dsave
@@ -241,7 +243,7 @@ function mbhfmm2d_form(fmmpars::MBHFMM2DParams,
 
     # form fmm
 
-    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Void,
+    ccall( (:mbhfmm2d_form_,LIBMBHFMM2D), Cvoid,
            (Ref{Float64},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -322,7 +324,7 @@ function mbhfmm2d_targ!(fmmpars::MBHFMM2DParams,
     ifder31 = zeros(Int32,1)
     der3targ = zeros(Float64,4,1)
 
-    ccall( (:mbhfmm2d3_targ_,LIBMBHFMM2D), Void,
+    ccall( (:mbhfmm2d3_targ_,LIBMBHFMM2D), Cvoid,
            (Ref{Float64},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -409,7 +411,7 @@ function mbhfmm2d_srcsrc!(fmmpars::MBHFMM2DParams,
     ifder31 = zeros(Int32,1)
     der3targ = zeros(Float64,4,1)
 
-    ccall( (:mbhfmm2d3_srcsrc_,LIBMBHFMM2D), Void,
+    ccall( (:mbhfmm2d3_srcsrc_,LIBMBHFMM2D), Cvoid,
            (Ref{Float64},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
@@ -489,7 +491,7 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
 
     for i = 1:nt
 
-    ccall((:mbhpotgrad2dall_cdqo_,LIBMBHFMM2D),Void,
+    ccall((:mbhpotgrad2dall_cdqo_,LIBMBHFMM2D),Cvoid,
           (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
            Ref{Float64},Ref{Int32},Ref{Float64},Ref{Float64},
            Ref{Int32},Ref{Float64},Ref{Float64},
@@ -542,7 +544,7 @@ function mbhfmm2d_direct_self!(fmmpars::MBHFMM2DParams,
     der3targ = zeros(Float64,4,1)
 
         
-    ccall((:mbhpotgrad2dall_cdqo3_self_,LIBMBHFMM2D),Void,
+    ccall((:mbhpotgrad2dall_cdqo3_self_,LIBMBHFMM2D),Cvoid,
           (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
            Ref{Float64},Ref{Int32},Ref{Float64},Ref{Float64},
            Ref{Int32},Ref{Float64},Ref{Float64},

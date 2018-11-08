@@ -1,4 +1,6 @@
-type BoxTree2D
+using Compat
+
+mutable struct BoxTree2D
 
     # storage for the description of
     # the fmm tree
@@ -21,7 +23,7 @@ type BoxTree2D
     blength::Float64
 end
 
-type SortedPts2D
+mutable struct SortedPts2D
 
     # storage for points and sorted
     # versions/ladder structures for
@@ -58,11 +60,11 @@ function SortedPts2D(src_in::Array{Float64,2},
     ns = convert(Int32,ns)
     nt = convert(Int32,nt)
 
-    isrcsort = Array{Int32}(ns)
-    itargsort = Array{Int32}(nt)
+    isrcsort = Array{Int32}(undef, ns)
+    itargsort = Array{Int32}(undef, nt)
 
-    isrcladder = Array{Int32}(2,maxboxes)
-    itargladder = Array{Int32}(2,maxboxes)
+    isrcladder = Array{Int32}(undef, 2,maxboxes)
+    itargladder = Array{Int32}(undef, 2,maxboxes)
 
     return SortedPts2D(ns,nt,src,targ,srcsort,
                        targsort,isrcsort,
@@ -79,19 +81,19 @@ function BoxTree2DMaxBoxes(maxboxes,maxlev)
     
     nboxes = -1
     nlev = -1
-    levelbox = Array{Int32}(maxboxes)
-    icolbox = Array{Int32}(maxboxes)
-    irowbox = Array{Int32}(maxboxes)
-    iparentbox = Array{Int32}(maxboxes)
-    ichildbox = Array{Int32}(4,maxboxes)
-    istartlev = Array{Int32}(maxlev+1)
-    iboxlev = Array{Int32}(maxboxes)    
-    icolleagbox = Array{Int32}(9,maxboxes)
-    nblevel = Array{Int32}(maxlev+1)
-    neighbors = Array{Int32}(12,maxboxes)
-    nnbrs = Array{Int32}(maxboxes)
-    localonoff = Array{Int32}(maxboxes)
-    zll = Array{Float64}(2)
+    levelbox = Array{Int32}(undef, maxboxes)
+    icolbox = Array{Int32}(undef, maxboxes)
+    irowbox = Array{Int32}(undef, maxboxes)
+    iparentbox = Array{Int32}(undef, maxboxes)
+    ichildbox = Array{Int32}(undef, 4,maxboxes)
+    istartlev = Array{Int32}(undef, maxlev+1)
+    iboxlev = Array{Int32}(undef, maxboxes)    
+    icolleagbox = Array{Int32}(undef, 9,maxboxes)
+    nblevel = Array{Int32}(undef, maxlev+1)
+    neighbors = Array{Int32}(undef, 12,maxboxes)
+    nnbrs = Array{Int32}(undef, maxboxes)
+    localonoff = Array{Int32}(undef, maxboxes)
+    zll = Array{Float64}(undef, 2)
     blength = zero(Float64)
 
     return BoxTree2D(nboxes,nlev,levelbox,icolbox,
@@ -178,19 +180,19 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     ymin = min(minimum(src[2,:]),minimum(targ[2,:]))
     ymax = max(maximum(src[2,:]),maximum(targ[2,:]))
 
-    copy!(tree.zll,[xmin;ymin])
+    copyto!(tree.zll,[xmin;ymin])
     tree.blength = max(xmax-xmin,ymax-ymin)
 
     zll = tree.zll
     blength = tree.blength
 
-    itemparray = Array{Int32}(maxboxes)
-    nboxes = Array{Int32}(1)
-    nlev = Array{Int32}(1)
+    itemparray = Array{Int32}(undef, maxboxes)
+    nboxes = Array{Int32}(undef, 1)
+    nlev = Array{Int32}(undef, 1)
 
     cprintln("calling tree building routine ...")
     
-    ccall( (:lrt2d_mktst_,LIBMBHFMM2D), Void,
+    ccall( (:lrt2d_mktst_,LIBMBHFMM2D), Cvoid,
            (Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},
             Ref{Int32},Ref{Int32},Ref{Int32},
@@ -221,7 +223,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     icolleagbox = tree.icolleagbox
 
     ccall( (:lrt2d_restrict_,LIBMBHFMM2D),
-           Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+           Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32}),
@@ -230,10 +232,10 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
            iboxlev,istartlev,ifixflag)
 
     if (ifixflag[1] != 0)
-        iflag = Array{Int32}(maxboxes)
+        iflag = Array{Int32}(undef, maxboxes)
         cprintln("enforcing level restriction ...")
         ccall( (:lrt2d_fix_,LIBMBHFMM2D),
-               Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+               Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
                       Ref{Int32},Ref{Int32},Ref{Int32},
                       Ref{Int32},Ref{Int32},Ref{Int32},
                       Ref{Int32},Ref{Int32},Ref{Int32},
@@ -250,7 +252,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     cprintln("testing tree ...")
 
     ccall( (:lrt2d_testtree_,LIBMBHFMM2D),
-           Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+           Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32}),
@@ -259,7 +261,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
            iboxlev,istartlev)
     
     ccall( (:lrt2d_mkcolls_,LIBMBHFMM2D),
-           Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+           Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32},Ref{Int32},Ref{Int32},
                   Ref{Int32}),
@@ -271,7 +273,7 @@ neighbors = tree.neighbors
 nnbrs = tree.nnbrs
 
 ccall( (:lrt2d_mknbrs_,LIBMBHFMM2D),
-       Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+       Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32}),
        neighbors,nnbrs,nboxes,ichildbox,
@@ -280,7 +282,7 @@ ccall( (:lrt2d_mknbrs_,LIBMBHFMM2D),
 cprintln("sorting points into tree ...")
 
 ccall( (:lrt2d_ptsort_,LIBMBHFMM2D),
-       Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+       Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},              
               Ref{Int32},Ref{Float64},Ref{Float64},
@@ -292,7 +294,7 @@ ccall( (:lrt2d_ptsort_,LIBMBHFMM2D),
        zll,blength,ier)
 
 ccall( (:lrt2d_ptsort_wc_,LIBMBHFMM2D),
-       Void, (Ref{Int32},Ref{Int32},Ref{Int32},
+       Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},              
               Ref{Int32},Ref{Float64},Ref{Float64},

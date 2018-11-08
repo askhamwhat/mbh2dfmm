@@ -1,4 +1,5 @@
-
+using Compat.Printf
+using Compat.LinearAlgebra
 
 include("MBHFMM2D.jl")
 
@@ -23,18 +24,18 @@ nt = 0
 
 # sources on an ellipse, targets inside
 
-src = Array(Float64,2,ns)
-rnorm = Array(Float64,2,ns)
-dsdt = Array(Float64,ns)
-targ = Array(Float64,2,nt)
+src = zeros(Float64,2,ns)
+rnorm = zeros(Float64,2,ns)
+dsdt = zeros(Float64,ns)
+targ = zeros(Float64,2,nt)
 
 charge = zeros(Float64,1)
 dipstr = zeros(Float64,1)
 dipvec = zeros(Float64,2,1)
 quadstr = zeros(Float64,1)
 quadvec = zeros(Float64,3,1)
-octstr = Array(Float64,ns) # octopole strength
-octvec = Array(Float64,4,ns) # octopole "direction"
+octstr = zeros(Float64,ns) # octopole strength
+octvec = zeros(Float64,4,ns) # octopole "direction"
 
 # storage for solution
 
@@ -98,8 +99,8 @@ fmmpars = MBHFMM2DParams(lambda,src,src2,ifcharge, ifdipole,
                  gradtarg2,ifhess,hesstarg2)
 
 println("relative error, pot ",
-        vecnorm(pottarg1-pottarg2)/vecnorm(pottarg1))
+        norm(pottarg1-pottarg2)/norm(pottarg1))
 println("relative error, grad ",
-        vecnorm(gradtarg1-gradtarg2)/vecnorm(gradtarg1))
+        norm(gradtarg1-gradtarg2)/norm(gradtarg1))
 println("relative error, hess ",
-        vecnorm(hesstarg1-hesstarg2)/vecnorm(hesstarg1))
+        norm(hesstarg1-hesstarg2)/norm(hesstarg1))

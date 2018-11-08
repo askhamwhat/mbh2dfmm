@@ -1,3 +1,4 @@
+using Compat
 
 const LIBMBHFMM2D = string(Base.Filesystem.dirname(Base.source_path()), "/../bin/libmbhfmm2d")
 
@@ -16,7 +17,7 @@ function modbh_qn(x::Array{Float64,1},
     kvec = zeros(Float64,n+5)
     
     for i = 1:n2
-        ccall( (:diffslogbk_fast_,LIBMBHFMM2D), Void,
+        ccall( (:diffslogbk_fast_,LIBMBHFMM2D), Cvoid,
                (Ref{Float64},Ref{Float64},Ref{Float64},
                 Ref{Float64},Ref{Int32},Ref{Float64},
                 Ref{Float64},Ref{Int32}),
@@ -68,7 +69,7 @@ function modbh_pn(x::Array{Float64,1},
     ivec = zeros(Float64,n+5)
     
     for i = 1:n2
-        ccall( (:diffszkik_fast_,LIBMBHFMM2D), Void,
+        ccall( (:diffszkik_fast_,LIBMBHFMM2D), Cvoid,
                (Ref{Float64},Ref{Float64},Ref{Float64},
                 Ref{Float64},Ref{Int32},Ref{Float64},
                 Ref{Float64},Ref{Int32}),
