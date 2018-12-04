@@ -109,7 +109,8 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
                              maxboxes;maxlev=45,
                              maxnodes=40,
                              ifverbose::Bool=true,
-                             ifalltarg::Bool=false)
+                             ifalltarg::Bool=false,
+                             ifignoremaxlevfail::Bool=false)
 
     function cprintln(str)
         if ifverbose
@@ -131,6 +132,11 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     # maxnodes - maximum number of sources and
     #            targets in a box (total)
     # maxlev - maximum depth of tree
+    # ifignoremaxlevfail - bool, ignores a
+    #          tree build failure indicating
+    #          that the maximum number of
+    #          levels was insufficient for the
+    #          desired maximum number of nodes
     #
     # Output:
     #
@@ -214,7 +220,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     tree.nboxes = nboxes[1]
     tree.nlev = nlev[1]
 
-    if (ier[1] != 0)
+    if (ier[1] != 0 && !(ifignoremaxlevfail && ier[1] == 4) )
         return tree, sorted_pts, ier[1]
     end
 
