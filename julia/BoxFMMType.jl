@@ -39,6 +39,9 @@ mutable struct SortedPts2D
     itargsort::Array{Int32,1}    
     isrcladder::Array{Int32,2}
     itargladder::Array{Int32,2}
+    ifexrad::Bool
+    exrad::Array{Float64,1}
+    exradsort::Array{Float64,1}
 
 end
 
@@ -66,10 +69,57 @@ function SortedPts2D(src_in::Array{Float64,2},
     isrcladder = Array{Int32}(undef, 2,maxboxes)
     itargladder = Array{Int32}(undef, 2,maxboxes)
 
+    ifexrad = false
+
+    exrad = Array{Float64}(undef, 1)
+    exradsort = Array{Float64}(undef, 1)    
+
     return SortedPts2D(ns,nt,src,targ,srcsort,
                        targsort,isrcsort,
                        itargsort,isrcladder,
-                       itargladder)
+                       itargladder,ifexrad,exrad,
+                       exradsort)
+
+end
+
+function SortedPts2DExRad(src_in::Array{Float64,2},
+                          targ_in::Array{Float64,2},
+                          exrad_in::Array{Float64,1},
+                          maxboxes)
+
+    # constructor for sorted points storage
+    # based on sources and targets
+
+    m,ns = size(src_in)
+    m,nt = size(targ_in)
+    nex = length(exrad_in)
+
+    @assert nex==ns "length of exrad should equal number of sources"
+    
+    
+    src = copy(src_in)
+    targ = copy(targ_in)
+    srcsort = copy(src)
+    targsort = copy(targ)
+    exrad = copy(exrad_in)
+    exradsort = copy(exrad)
+
+    ns = convert(Int32,ns)
+    nt = convert(Int32,nt)
+
+    isrcsort = Array{Int32}(undef, ns)
+    itargsort = Array{Int32}(undef, nt)
+
+    isrcladder = Array{Int32}(undef, 2,maxboxes)
+    itargladder = Array{Int32}(undef, 2,maxboxes)
+
+    ifexrad = true
+    
+    return SortedPts2D(ns,nt,src,targ,srcsort,
+                       targsort,isrcsort,
+                       itargsort,isrcladder,
+                       itargladder,ifexrad,
+                       exrad,exradsort)
 
 end
 
@@ -110,7 +160,9 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
                              maxnodes=40,
                              ifverbose::Bool=true,
                              ifalltarg::Bool=false,
-                             ifignoremaxlevfail::Bool=false)
+                             exrad::Array{Float64,1}
+                             =Array{Float64}(undef,0),
+                             ifignoremaxlevfail=false)
 
     function cprintln(str)
         if ifverbose
@@ -132,11 +184,6 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     # maxnodes - maximum number of sources and
     #            targets in a box (total)
     # maxlev - maximum depth of tree
-    # ifignoremaxlevfail - bool, ignores a
-    #          tree build failure indicating
-    #          that the maximum number of
-    #          levels was insufficient for the
-    #          desired maximum number of nodes
     #
     # Output:
     #
@@ -154,8 +201,12 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     ier = [zero(Int32)]
 
     cprintln("sorting points ...")
-    
-    sorted_pts = SortedPts2D(src,targ,maxboxes)
+
+    if (length(exrad) > 0)
+        sorted_pts = SortedPts2DExRad(src,targ,exrad,maxboxes)
+    else
+        sorted_pts = SortedPts2D(src,targ,maxboxes)        
+    end
 
     cprintln("allocating memory ...")
     
@@ -178,6 +229,9 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
     targsort = sorted_pts.targsort
     itargsort = sorted_pts.itargsort
     itargladder = sorted_pts.itargladder
+    ifexrad = sorted_pts.ifexrad
+    exrad = sorted_pts.exrad
+    exradsort = sorted_pts.exradsort
     nt = sorted_pts.nt
     localonoff = tree.localonoff
 
@@ -191,6 +245,15 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
 
     zll = tree.zll
     blength = tree.blength
+
+    maxlev2 = maxlev
+    if ifexrad
+        exradmax = maximum(exrad)
+        maxlev_exrad = floor(Int32,log2(blength/exradmax))
+        maxlev2 = max(0,min(maxlev_exrad,maxlev))
+        maxlev2 = convert(Int32,maxlev2)
+        ifignoremaxlevfail = true
+    end
 
     itemparray = Array{Int32}(undef, maxboxes)
     nboxes = Array{Int32}(undef, 1)
@@ -212,7 +275,7 @@ function BoxTree2DMaxBoxesST(src::Array{Float64,2},
            icolbox,irowbox,nboxes,nlev,
            iparentbox,ichildbox,nblevel,iboxlev,
            istartlev,maxboxes,itemparray,
-           maxlev,src,srcsort,isrcsort,
+           maxlev2,src,srcsort,isrcsort,
            isrcladder,ns,targ,targsort,itargsort,
            itargladder,nt,maxnodes,zll,blength,
            ier,localonoff)
@@ -299,6 +362,10 @@ ccall( (:lrt2d_ptsort_,LIBMBHFMM2D),
        src,srcsort,isrcsort,isrcladder,ns,
        zll,blength,ier)
 
+if ifexrad
+    copy!(exradsort,exrad[isrcsort])
+end
+
 ccall( (:lrt2d_ptsort_wc_,LIBMBHFMM2D),
        Cvoid, (Ref{Int32},Ref{Int32},Ref{Int32},
               Ref{Int32},Ref{Int32},Ref{Int32},
@@ -310,7 +377,6 @@ ccall( (:lrt2d_ptsort_wc_,LIBMBHFMM2D),
        iparentbox,ichildbox,nblevel,iboxlev,istartlev,
        targ,targsort,itargsort,itargladder,nt,
        zll,blength,ier)
-
 
 
 for i = 1:nboxes[1]

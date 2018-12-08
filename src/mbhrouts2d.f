@@ -1006,6 +1006,61 @@ c     local variables
       return
       end
   
+      subroutine mbhpotgrad2dall_cdqo3_add_exrad(beta,src,exrad,ns,
+     1     ifcharge,charge,ifdipole,dipstr,dipvec,ifquad,quadstr,
+     2     quadvec,ifoct,octstr,octvec,target,ifpot,pot,ifgrad,grad,
+     3     ifhess,hess,ifder3,der3)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      implicit none
+c     global variables
+      real *8 beta, src(2,*), charge(*), dipstr(*), exrad(*)
+      real *8 dipvec(2,*), quadstr(*), quadvec(3,*), octstr(*)
+      real *8 target(2), octvec(4,*)
+      real *8 pot, grad(2), hess(3), der3(4)
+      integer ns, ifcharge, ifdipole, ifquad, ifpot, ifgrad, ifhess
+      integer ifder3, ifoct
+c     local variables
+      real *8 pottemp, gradtemp(2), hesstemp(3), der3temp(4), rs
+
+      integer nstemp, i
+
+      nstemp = 1
+      
+      do i = 1,ns
+         rs = dsqrt((src(1,i)-target(1))**2 + (src(2,i)-target(2))**2)
+         if (rs .gt. exrad(i)) then
+            call mbhpotgrad2dall_cdqo3(beta,src(1,i),nstemp,ifcharge,
+     1           charge(i),ifdipole,dipstr(i),dipvec(1,i),ifquad,
+     2           quadstr(i),quadvec(1,i),
+     2           ifoct,octstr(i),octvec(1,i),target,ifpot,pottemp,
+     2           ifgrad,gradtemp,ifhess,hesstemp,ifder3,der3temp)
+
+            if (ifpot .eq. 1) pot = pot + pottemp
+            if (ifgrad .eq. 1) then
+               grad(1) = grad(1) + gradtemp(1)
+               grad(2) = grad(2) + gradtemp(2)
+            endif
+            if (ifhess .eq. 1) then
+               hess(1) = hess(1) + hesstemp(1)
+               hess(2) = hess(2) + hesstemp(2)
+               hess(3) = hess(3) + hesstemp(3)
+            endif
+            if (ifder3 .eq. 1) then
+               der3(1) = der3(1) + der3temp(1)
+               der3(2) = der3(2) + der3temp(2)
+               der3(3) = der3(3) + der3temp(3)
+               der3(4) = der3(4) + der3temp(4)
+            endif
+         endif
+      enddo
+
+      return
+      end
+  
       subroutine mbh2dmpeval(beta,rscale,center,mbhmpole,ympole,
      1     nterms,ztarg,pot,ifgrad,grad,ifhess,hess)
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

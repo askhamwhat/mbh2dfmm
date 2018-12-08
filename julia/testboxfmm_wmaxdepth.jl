@@ -45,9 +45,13 @@ end
 
 maxboxes = 100000 # length of arrays allocated
 
-# no more than 30 sources and targets per box
+# no more than 2 sources and targets per box
+# here we test the effect of the override
+# flag ifignoremaxlevfail, which builds a tree
+# even if the maxnodes criterion can't be met
 tree, sorted_pts, ier = BoxTree2DMaxBoxesST(src,targ,maxboxes,
-                                 maxnodes=2,maxlev=4,ifignoremaxlevfail=true)
+                                            maxnodes=2,maxlev=4,
+                                        ifignoremaxlevfail=true)
 
 @printf "built tree with %d boxes and %d levels\n" tree.nboxes tree.nlev
 

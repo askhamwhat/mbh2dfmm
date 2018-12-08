@@ -1608,6 +1608,260 @@ C$OMP END PARALLEL DO
       return
       end
 
+      subroutine mbhfmm2d3_targ_exrad(beta,ier,nlev,levelbox,iparentbox, 
+     1     ichildbox, icolbox, irowbox, nboxes, nblevel, iboxlev, 
+     2     istartlev, zll, blength, ns, srcsort, isrcladder, exrad,
+     3     ifcharge, chargesort, ifdipole, dipstrsort, dipvecsort,
+     4     ifquad, quadstrsort, quadvecsort, ifoct, octstrsort,
+     5     octvecsort, isave, dsave, csave, 
+     5     nt, targ, ifpot, pot, ifgrad, grad, ifhess, hess,
+     6     ifder3, der3)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c     SAME AS MBHFMM2D3_TARG but adds the ability to exclude a
+c     radius about each source point in *DIRECT* calculations
+c
+c     EXRAD - radius to exclude per source (in src sorted order)
+c
+c     Note that if the tree has boxes so small that the influence of
+c     a source at a target is computed via multipoles/local expansions
+c     then this routine will fail.
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      implicit none
+c     global
+      integer nlev, levelbox(*), iparentbox(*), ichildbox(4,*)
+      integer icolbox(*), irowbox(*), nboxes, nblevel(0:1), iboxlev(*)
+      integer istartlev(0:1), ifoct
+      integer ier, iprec, ns, isrcladder(2,*), ifcharge,ifdipole,ifquad
+      integer isave(*), nt, ifpot, ifgrad, ifhess, ifder3
+      real *8 zll(2), blength, srcsort(2,*), dsave(*), targ(2,*), beta
+      real *8 exrad(*)
+      real *8 pot(*), grad(2,*), hess(3,*), der3(4,*)
+      real *8 chargesort(*), dipstrsort(*), dipvecsort(2,*)
+      real *8 quadstrsort(*), quadvecsort(3,*)
+      real *8 octstrsort(*), octvecsort(4,*)
+      complex *16 csave(*)
+c     local
+      integer nterms, nnodes , msrcflag, mflagghost
+      integer mneighbors, mnnbrs, mrscales
+      integer mlloc, mmbhloc, mbiglloc, mbigmbhloc
+
+c     grab pointers
+
+      nterms = isave(1)
+      nnodes = isave(2)
+
+      msrcflag = isave(11)
+      mflagghost = isave(12)
+      mneighbors = isave(16)
+      mnnbrs = isave(17)
+
+      mrscales = isave(21)
+
+      mlloc = isave(31)
+      mmbhloc = isave(32)
+      mbiglloc = isave(33)
+      mbigmbhloc = isave(34)
+
+
+c     call main routine
+
+      call mbhfmm2d3_targ_exrad1(beta,nlev,levelbox,iparentbox,
+     1     ichildbox,icolbox,irowbox,nboxes,nblevel,
+     2     iboxlev,istartlev,isave(mneighbors),isave(mnnbrs),nterms,
+     3     csave(mlloc),csave(mmbhloc),
+     3     csave(mbigmbhloc),csave(mbiglloc),isave(mflagghost),
+     4     dsave(mrscales),isave(msrcflag),ns,srcsort,isrcladder,
+     5     exrad,
+     8     ifcharge,chargesort,ifdipole,dipstrsort,dipvecsort,
+     9     ifquad,quadstrsort,quadvecsort,ifoct,octstrsort,
+     1     octvecsort,zll,blength,nt,targ,
+     7     ifpot,pot,ifgrad,grad,ifhess,hess,ifder3,der3)
+
+      return
+      end
+
+
+
+      subroutine mbhfmm2d3_targ_exrad1(beta,nlev,levelbox,iparentbox,
+     1     ichildbox,icolbox,irowbox,nboxes,nblevel,
+     2     iboxlev,istartlev,neighbors,nnbrs,nterms,lloc,mbhloc,
+     3     bigmbhloc,biglloc,iflagghost,rscales,isrcflag,ns,srcsort,
+     4     isrcladder,exrad,ifcharge,chargesort,ifdipole,dipstrsort,
+     5     dipvecsort,ifquad,quadstrsort,quadvecsort,ifoct,octstrsort,
+     5     octvecsort,zll,blength,
+     6     nt,targ,ifpot,pot,ifgrad,grad,ifhess,hess,ifder3,der3)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      implicit none
+c     global 
+      integer nlev, levelbox(*), iparentbox(*), ichildbox(4,*)
+      integer icolbox(*), irowbox(*), nboxes, nblevel(0:1), iboxlev(*)
+      integer istartlev(0:1), isrcladder(2,*), nterms, nnodes
+      integer ier, isrcflag(*), iflagghost(*)
+      integer neighbors(12,*), nnbrs(*)
+      integer ns, nt, ifpot, ifgrad, ifhess, ifcharge, ifdipole, ifquad
+      integer ifder3, ifoct
+      real *8 srcsort(2,*), targ(2,*), zll(2), blength, rscales(0:nlev)
+      real *8 beta, exrad(*)
+      complex *16 mbhloc(0:nterms,*), lloc(0:nterms,*)
+      complex *16 bigmbhloc(0:nterms,4,*), biglloc(0:nterms,4,*)
+      real *8 chargesort(*), dipstrsort(*), dipvecsort(2,*)
+      real *8 quadstrsort(*), quadvecsort(3,*)
+      real *8 octstrsort(*), octvecsort(4,*)
+      real *8 pot(*), grad(2,*), hess(3,*), der3(4,*)
+c     local
+      integer i, ibox, ii, icol, irow, jsrc, nsbox, ntbox, istartbox, ic
+      integer iendbox, ier2, ilev, OMP_MIN_VAL
+      parameter (OMP_MIN_VAL = 1000)
+      real *8 xlength, zbox(2), zboxc(2), rscale, xt, yt
+      real *8 dzero
+      data dzero / 0.0d0 /
+
+C$OMP PARALLEL DO PRIVATE(ibox,xlength,ii,jsrc,istartbox,iendbox,nsbox,
+C$OMP& icol, irow, ntbox, rscale, zbox, zboxc, ier2, ic, xt, yt, ilev) 
+C$OMP& IF(nt .gt. OMP_MIN_VAL)
+C$OMP& SCHEDULE(dynamic,100)
+      do i = 1,nt
+
+         if (ifpot .eq. 1) pot(i) = dzero
+         if (ifgrad .eq. 1) then
+            grad(1,i) = dzero
+            grad(2,i) = dzero
+         endif
+         if (ifhess .eq. 1) then
+            hess(1,i) = dzero
+            hess(2,i) = dzero
+            hess(3,i) = dzero
+         endif
+         if (ifder3 .eq. 1) then
+            der3(1,i) = dzero
+            der3(2,i) = dzero
+            der3(3,i) = dzero
+            der3(4,i) = dzero
+         endif
+
+c     find containing box
+
+         call lrt2d_findbox(ibox,targ(1,i),targ(2,i),icolbox,irowbox,
+     1        ichildbox,nlev,nblevel,iboxlev,istartlev,levelbox, 
+     2        zll,blength, ier2)
+
+c     process target
+
+         ilev = levelbox(ibox)
+
+         xlength = blength/(2.0d0**ilev)
+
+c     self direct 
+
+         if (isrcflag(ibox) .eq. 1) then
+            istartbox = isrcladder(1,ibox)
+            iendbox = isrcladder(2,ibox)
+            nsbox = iendbox-istartbox+1
+
+            call mbhpotgrad2dall_cdqo3_add_exrad(beta,
+     1           srcsort(1,istartbox),exrad(istartbox),
+     2           nsbox,ifcharge,chargesort(istartbox),ifdipole,
+     2           dipstrsort(istartbox),dipvecsort(1,istartbox),
+     3           ifquad,quadstrsort(istartbox),quadvecsort(1,istartbox),
+     3           ifoct,octstrsort(istartbox),octvecsort(1,istartbox),
+     4           targ(1,i),ifpot,pot(i),ifgrad,grad(1,i),
+     5           ifhess,hess(1,i),ifder3,der3(1,i))
+
+         endif
+
+c     neighbors: direct
+
+         do ii = 1,nnbrs(ibox)
+            jsrc = neighbors(ii,ibox)
+            if (isrcflag(jsrc) .eq. 1) then
+
+               istartbox = isrcladder(1,jsrc)
+               iendbox = isrcladder(2,jsrc)
+               nsbox = iendbox-istartbox+1
+
+               call mbhpotgrad2dall_cdqo3_add_exrad(beta,
+     1              srcsort(1,istartbox),exrad(istartbox),
+     1              nsbox,ifcharge,chargesort(istartbox),ifdipole,
+     2              dipstrsort(istartbox),dipvecsort(1,istartbox),
+     3              ifquad,quadstrsort(istartbox),
+     4              quadvecsort(1,istartbox),ifoct,
+     4              octstrsort(istartbox),octvecsort(1,istartbox),
+     6              targ(1,i),ifpot,pot(i),
+     5              ifgrad,grad(1,i),ifhess,hess(1,i),ifder3,der3(1,i))
+
+            endif
+         enddo
+            
+c     contributions from small to big far
+
+         if (iflagghost(ibox) .eq. 1) then
+
+            xt = targ(1,i)
+            yt = targ(2,i)
+
+            ntbox = 1
+            irow = irowbox(ibox)
+            icol = icolbox(ibox)
+            zbox(1) = zll(1)+xlength*(icol-0.5d0)
+            zbox(2) = zll(2)+xlength*(irow-0.5d0)
+
+c     figure out which ghost child is relevant
+
+            if (xt .lt. zbox(1)) then
+               if (yt .gt. zbox(2)) then
+                  ic = 1
+                  zboxc(1) = zbox(1)-xlength/4.0d0
+                  zboxc(2) = zbox(2)+xlength/4.0d0
+               else
+                  ic = 4
+                  zboxc(1) = zbox(1)-xlength/4.0d0
+                  zboxc(2) = zbox(2)-xlength/4.0d0
+               endif
+            else
+               if (yt .gt. zbox(2)) then
+                  ic = 2
+                  zboxc(1) = zbox(1)+xlength/4.0d0
+                  zboxc(2) = zbox(2)+xlength/4.0d0
+               else
+                  ic = 3
+                  zboxc(1) = zbox(1)+xlength/4.0d0
+                  zboxc(2) = zbox(2)-xlength/4.0d0
+               endif
+            endif
+
+            call mbh2dtaeval3all(beta,rscales(ilev+1),zboxc,
+     1           bigmbhloc(0,ic,ibox),biglloc(0,ic,ibox),
+     1           nterms,targ(1,i),ntbox,ifpot,pot(i),ifgrad,grad(1,i),
+     3           ifhess,hess(1,i),ifder3,der3(1,i))
+
+
+            
+         endif
+
+c     evaluate local expansions
+
+         ntbox = 1
+         irow = irowbox(ibox)
+         icol = icolbox(ibox)
+         zbox(1) = zll(1)+xlength*(icol-0.5d0)
+         zbox(2) = zll(2)+xlength*(irow-0.5d0)
+
+         call mbh2dtaeval3all(beta,rscales(ilev),zbox,mbhloc(0,ibox),
+     1        lloc(0,ibox),nterms,targ(1,i),ntbox,ifpot,pot(i),
+     2        ifgrad,grad(1,i),ifhess,hess(1,i),ifder3,der3(1,i))
+
+      enddo
+C$OMP END PARALLEL DO
+
+      return
+      end
+
       subroutine mbhfmm2d3_targrc(beta, ier, nlev, levelbox, iparentbox, 
      1     ichildbox, icolbox, irowbox, nboxes, nblevel, iboxlev, 
      2     istartlev, zll, blength, ns, srcsort, isrcladder, 

@@ -30,6 +30,7 @@ mutable struct MBHFMM2DParams
     quadvec::Array{Float64,2}        
     octstr::Array{Float64}
     octvec::Array{Float64,2}
+    exrad::Array{Float64,1}
 end
 
 function MBHFMM2DParams(lambda::Float64,src::Array{Float64,2},
@@ -43,7 +44,9 @@ function MBHFMM2DParams(lambda::Float64,src::Array{Float64,2},
                         octstr::Array{Float64,1},
                         octvec::Array{Float64,2};
                         iprec::Int=3,
-                        ifalltarg::Bool=false)
+                        ifalltarg::Bool=false,
+                        exrad::Array{Float64,1}
+                        =Array{Float64}(undef,0))
 
     iprec = convert(Int32,iprec)
     
@@ -54,7 +57,7 @@ function MBHFMM2DParams(lambda::Float64,src::Array{Float64,2},
                           src,targ,ifcharge,ifdipole,
                           ifquad,ifoct,
                           charge,dipstr,dipvec,quadstr,
-                          quadvec,octstr,octvec)
+                          quadvec,octstr,octvec,exrad)
 
 end
 
@@ -143,20 +146,23 @@ end
 function mbhfmm2d_form(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
                        maxboxes::Int=-1)
     # form tree
-    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes,exrad=fmmpars.exrad)
     # do work
     mbhfmm2d_form(fmmpars, tree, sorted_pts)
 end
 
 function mbhfmm2d_tree(fmmpars::MBHFMM2DParams;maxnodes::Int=30,
-                       maxboxes::Int=-1)
+                       maxboxes::Int=-1,
+                       exrad::Array{Float64,1}
+                       =Array{Float64}(undef,0))
     if maxboxes < 0
         return [], 1
     end
     tree, sorted_pts, ier = BoxTree2DMaxBoxesST(fmmpars.src, fmmpars.targ, maxboxes,
                                                 maxnodes=maxnodes,
                                                 ifverbose=false,
-                                                ifalltarg=fmmpars.ifalltarg)
+                                                ifalltarg=fmmpars.ifalltarg,
+                                                exrad=exrad)
     return tree, sorted_pts, ier
 end
 
@@ -274,7 +280,35 @@ function mbhfmm2d_targ!(fmmpars::MBHFMM2DParams,
                         targ::Array{Float64,2},
                         ifpot::Bool,pottarg::Array{Float64,1},
                         ifgrad::Bool,gradtarg::Array{Float64,2},
-                        ifhess::Bool,hesstarg::Array{Float64,2})
+                        ifhess::Bool,hesstarg::Array{Float64,2},
+                        ifignore_exrad::Bool=false)
+
+    # determine if an exclusion radius should be used
+    # if ifignore_exrad == true, then the exclusion
+    # radius is ignored
+
+    sorted_pts = fmmstor.sorted_pts
+    ifexrad = sorted_pts.ifexrad
+    
+    if (!ifexrad || ifignore_exrad)
+        mbhfmm2d_targ_all!(fmmpars,fmmstor,targ,ifpot,pottarg,
+                           ifgrad,gradtarg,ifhess,hesstarg)
+    else
+        exradsort = sorted_pts.exradsort
+        mbhfmm2d_targ_exrad!(fmmpars,fmmstor,exradsort,
+                             targ,ifpot,pottarg,
+                             ifgrad,gradtarg,ifhess,hesstarg)
+    end
+
+
+end
+
+function mbhfmm2d_targ_all!(fmmpars::MBHFMM2DParams,
+                            fmmstor::MBHFMM2DStorage,
+                            targ::Array{Float64,2},
+                         ifpot::Bool,pottarg::Array{Float64,1},
+                         ifgrad::Bool,gradtarg::Array{Float64,2},
+                         ifhess::Bool,hesstarg::Array{Float64,2})
 
     # unpack
     
@@ -343,6 +377,91 @@ function mbhfmm2d_targ!(fmmpars::MBHFMM2DParams,
            ichildbox,icolbox,irowbox,nboxes,nblevel,
            iboxlev,istartlev,zll,
            blength,ns,srcsort,isrcladder,ifcharge,chargesort,
+           ifdipole,dipstrsort,dipvecsort,ifquad,
+           quadstrsort,quadvecsort,ifoct,octstrsort,
+           octvecsort,isave,dsave,csave,nt,targ,ifpot1,
+           pottarg,ifgrad1,gradtarg,ifhess1,hesstarg,
+           ifder31,der3targ)
+    
+    return
+end
+
+function mbhfmm2d_targ_exrad!(fmmpars::MBHFMM2DParams,
+                              fmmstor::MBHFMM2DStorage,
+                              exradsort::Array{Float64,1},
+                              targ::Array{Float64,2},
+                           ifpot::Bool,pottarg::Array{Float64,1},
+                           ifgrad::Bool,gradtarg::Array{Float64,2},
+                           ifhess::Bool,hesstarg::Array{Float64,2})
+
+    # unpack
+    
+    tree = fmmstor.tree
+    sorted_pts = fmmstor.sorted_pts
+    
+    lambda = fmmpars.lambda
+    ier1 = zeros(Int32,1)
+    nlev = tree.nlev
+    levelbox = tree.levelbox
+    iparentbox = tree.iparentbox
+    ichildbox = tree.ichildbox
+    icolbox = tree.icolbox
+    irowbox = tree.irowbox
+    nboxes = tree.nboxes
+    nblevel = tree.nblevel
+    iboxlev = tree.iboxlev
+    istartlev = tree.istartlev
+    zll = tree.zll
+    blength = tree.blength
+    ns = sorted_pts.ns
+    srcsort = sorted_pts.srcsort
+    isrcladder = sorted_pts.isrcladder
+
+    ifcharge = fmmstor.ifcharge
+    chargesort = fmmstor.chargesort
+    ifdipole = fmmstor.ifdipole
+    dipstrsort = fmmstor.dipstrsort
+    dipvecsort = fmmstor.dipvecsort
+    ifquad = fmmstor.ifquad
+    quadstrsort = fmmstor.quadstrsort
+    quadvecsort = fmmstor.quadvecsort
+    ifoct = fmmstor.ifoct
+    octstrsort = fmmstor.octstrsort
+    octvecsort = fmmstor.octvecsort
+    isave = fmmstor.isave
+    dsave = fmmstor.dsave
+    csave = fmmstor.csave
+
+    mtemp, nt = size(targ)
+    nt = convert(Int32,nt)
+
+    ifpot1 = boxfmm2d_booltoint32(ifpot)
+    ifgrad1 = boxfmm2d_booltoint32(ifgrad)
+    ifhess1 = boxfmm2d_booltoint32(ifhess)
+
+    ifder31 = zeros(Int32,1)
+    der3targ = zeros(Float64,4,1)
+
+    ccall( (:mbhfmm2d3_targ_exrad_,LIBMBHFMM2D), Cvoid,
+           (Ref{Float64},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Int32},Ref{Int32},Ref{Int32},
+            Ref{Int32},Ref{Float64},
+            Ref{Float64},Ref{Int32},Ref{Float64},Ref{Int32},
+            Ref{Float64},Ref{Int32},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Complex{Float64}},
+            Ref{Int32},Ref{Float64},Ref{Int32},
+            Ref{Float64},Ref{Int32},Ref{Float64},
+            Ref{Int32},Ref{Float64},Ref{Int32},
+            Ref{Float64}),
+           lambda,ier1,nlev,levelbox,iparentbox,
+           ichildbox,icolbox,irowbox,nboxes,nblevel,
+           iboxlev,istartlev,zll,
+           blength,ns,srcsort,isrcladder,exradsort,
+           ifcharge,chargesort,
            ifdipole,dipstrsort,dipvecsort,ifquad,
            quadstrsort,quadvecsort,ifoct,octstrsort,
            octvecsort,isave,dsave,csave,nt,targ,ifpot1,
@@ -458,7 +577,8 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
                           targ::Array{Float64,2},
                           ifpot::Bool,pottarg::Array{Float64,1},
                           ifgrad::Bool,gradtarg::Array{Float64,2},
-                          ifhess::Bool,hesstarg::Array{Float64,2})
+                          ifhess::Bool,hesstarg::Array{Float64,2};
+                          exrad::Array{Float64,1}=Array{Float64}(undef,0))
 
 
     src = fmmpars.src
@@ -467,6 +587,13 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
     mtemp, nt = size(targ)
     nt = convert(Int32,nt)
 
+    ifexrad = false
+    if length(exrad) > 0
+        @assert length(exrad) == ns "length of exrad should equal number of sources"
+        ifexrad = true
+    end
+        
+    
     lambda = fmmpars.lambda
     ifcharge = boxfmm2d_booltoint32(fmmpars.ifcharge)
     ifdipole = boxfmm2d_booltoint32(fmmpars.ifdipole)
@@ -487,28 +614,61 @@ function mbhfmm2d_direct!(fmmpars::MBHFMM2DParams,
 
     pottemp = zeros(Float64,1)
     gradtemp = zeros(Float64,2)
-    hesstemp = zeros(Float64,3)    
+    hesstemp = zeros(Float64,3)
+    der3temp = zeros(Float64,4)
 
-    for i = 1:nt
+    if ifexrad
+        for i = 1:nt
+            pottemp = zeros(Float64,1)
+            gradtemp = zeros(Float64,2)
+            hesstemp = zeros(Float64,3)
+            der3temp = zeros(Float64,4)
 
-    ccall((:mbhpotgrad2dall_cdqo_,LIBMBHFMM2D),Cvoid,
-          (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
-           Ref{Float64},Ref{Int32},Ref{Float64},Ref{Float64},
-           Ref{Int32},Ref{Float64},Ref{Float64},
-           Ref{Int32},Ref{Float64},Ref{Float64},
-           Ref{Float64},Ref{Int32},Ref{Float64},
-           Ref{Int32},Ref{Float64},Ref{Int32},Ref{Float64}),
-          lambda,src,ns,ifcharge,charge,ifdipole,dipstr,dipvec,
-          ifquad,quadstr,quadvec,ifoct,octstr,octvec,
-          targ[:,i],ifpot1,pottemp,ifgrad1,gradtemp,
-          ifhess1,hesstemp)
+            ccall((:mbhpotgrad2dall_cdqo3_add_exrad_,LIBMBHFMM2D),Cvoid,
+                  (Ref{Float64},Ref{Float64},Ref{Float64},
+                   Ref{Int32},Ref{Int32},
+                   Ref{Float64},Ref{Int32},Ref{Float64},
+                   Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Float64},
+                   Ref{Float64},Ref{Int32},Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Int32},
+                   Ref{Float64}),
+                  lambda,src,exrad,ns,ifcharge,charge,
+                  ifdipole,dipstr,dipvec,
+                  ifquad,quadstr,quadvec,ifoct,octstr,octvec,
+                  targ[:,i],ifpot1,pottemp,ifgrad1,gradtemp,
+                  ifhess1,hesstemp)
 
-        pottarg[i] = pottemp[1]
-        gradtarg[:,i] = gradtemp
-        hesstarg[:,i] = hesstemp        
+            pottarg[i] = pottemp[1]
+            gradtarg[:,i] = gradtemp
+            hesstarg[:,i] = hesstemp        
 
+        end
+    else
+        for i = 1:nt
+            
+            ccall((:mbhpotgrad2dall_cdqo_,LIBMBHFMM2D),Cvoid,
+                  (Ref{Float64},Ref{Float64},Ref{Int32},Ref{Int32},
+                   Ref{Float64},Ref{Int32},Ref{Float64},
+                   Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Float64},
+                   Ref{Float64},Ref{Int32},Ref{Float64},
+                   Ref{Int32},Ref{Float64},Ref{Int32},
+                   Ref{Float64}),
+                  lambda,src,ns,ifcharge,charge,ifdipole,
+                  dipstr,dipvec,
+                  ifquad,quadstr,quadvec,ifoct,octstr,octvec,
+                  targ[:,i],ifpot1,pottemp,ifgrad1,gradtemp,
+                  ifhess1,hesstemp)
+
+            pottarg[i] = pottemp[1]
+            gradtarg[:,i] = gradtemp
+            hesstarg[:,i] = hesstemp        
+
+        end
     end
-
     return
 end
 
