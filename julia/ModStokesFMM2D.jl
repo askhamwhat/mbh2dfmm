@@ -180,10 +180,12 @@ end
 function fmm_stresslet_targ(src, targ, fvec, nvec, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
                             maxboxes::Int=DEFAULT_MAXBOXES,
-                            ifgrad::Bool=false)
+                            ifgrad::Bool=false,
+                            exrad=Float64[])
     fmmpars, tree, sorted_pts = fmm_stresslet_prep(src, targ, alpha,
                                                    maxnodes=maxnodes,
-                                                   maxboxes=maxboxes)
+                                                   maxboxes=maxboxes,
+                                                   exrad=exrad)
     u = fmm_stresslet_targ(fmmpars, tree, sorted_pts, fvec, nvec, alpha; ifgrad=ifgrad)
     return u
 end
@@ -261,7 +263,9 @@ end
 
 function fmm_stresslet_prep(src, targ, alpha;
                             maxnodes::Int=DEFAULT_MAXNODES,
-                            maxboxes::Int=DEFAULT_MAXBOXES)
+                            maxboxes::Int=DEFAULT_MAXBOXES,
+                            exrad=Float64[])
+
     ns = size(src, 2)
     nt = size(targ, 2)
     
@@ -277,12 +281,14 @@ function fmm_stresslet_prep(src, targ, alpha;
     quadvec = Array{Float64}(3,0)
     octstr = ones(ns)
     octvec = Array{Float64}(4,ns)
-
+    
     fmmpars = MBHFMM2DParams(alpha,src,targ,ifcharge, ifdipole,
                              ifquad, ifoct, charge, dipstr,
                              dipvec, quadstr, quadvec, octstr,
-                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false)
-    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes)
+                             octvec, iprec = DEFAULT_IPREC, ifalltarg = false,
+                             exrad = exrad)
+
+    tree, sorted_pts, ier = mbhfmm2d_tree(fmmpars, maxnodes=maxnodes, maxboxes=maxboxes, exrad=exrad)
     return fmmpars, tree, sorted_pts
 end
 
