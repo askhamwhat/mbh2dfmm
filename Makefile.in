@@ -82,5 +82,8 @@ printflags:
 
 mbhfmmtest: setup_dir lib $(TESTOBJS)
 	cp $(BIN_DIR)/$(LIBNAME) $(TMP_DIR)/
-	cd $(TMP_DIR); $(FC) $(FFLAGS) -o $@ ../$(TEST_DIR)/$@_dr.f90 $(LTESTOBJS) $(LIBNAME)
-	cd $(TMP_DIR); ./$@
+	cd $(TMP_DIR); \
+	$(FC) $(FFLAGS) -o $@ ../$(TEST_DIR)/$@_dr.f90 $(LTESTOBJS) $(LIBNAME)
+	cd $(TMP_DIR); \
+	export LD_LIBRARY_PATH="${PWD}/$(TMP_DIR):${LD_LIBRARY_PATH}"; \
+	./$@
