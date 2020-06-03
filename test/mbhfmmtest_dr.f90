@@ -133,6 +133,8 @@ program mbhfmmtest
         rny(i) = -dx/dsdt(i)
      enddo
 
+     h = 1.0d0
+
      ! targets
      nt = 1000
      do i = 1,nt
