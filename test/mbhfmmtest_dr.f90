@@ -8,32 +8,31 @@ program mbhfmmtest
   implicit real *8 (a-h,o-z)
   
   integer maxboxes, maxlevel, nboxes, nlev, maxsrc
-  parameter (maxboxes = 30000, maxlevel = 30)
-  integer, dimension(maxboxes) :: levelbox,icolbox,irowbox,iparentbox
-  integer, dimension(maxboxes) :: itemparray, iflag
-  integer ichildbox(4,maxboxes), istartlev(0:maxlevel)
-  integer iboxlev(maxboxes),icolleagbox(9,maxboxes),nblevel(0:maxlevel)
-  integer neighbors(12,maxboxes), nnbrs(maxboxes)
-  integer iboxes(maxboxes), localonoff(maxboxes)
+  integer, dimension(:), allocatable :: levelbox,icolbox,irowbox,iparentbox
+  integer, dimension(:), allocatable :: itemparray,iflag
+  integer, dimension(:,:), allocatable :: ichildbox,icolleagbox,neighbors
+  integer, dimension(:,:), allocatable :: isrcladder, itargladder  
+  integer, dimension(:), allocatable :: iboxlev,nnbrs,iboxes,localonoff
+  integer, dimension(:), allocatable :: isrcsort,itargsort
+  integer, dimension(:), allocatable :: istartlev, nblevel  
+
   integer, allocatable :: isave(:)
   real *8, allocatable :: dsave(:)
   complex *16, allocatable :: csave(:)
-  parameter (maxsrc = 1000000)
-  integer :: isrcsort(maxsrc), isrcladder(2,maxboxes)
-  integer :: itargsort(maxsrc), itargladder(2,maxboxes)  
-  real *8 :: src(2,maxsrc), srcsort(2,maxsrc), zll(2), blength
-  real *8 :: targ(2,maxsrc), targsort(2,maxsrc)
-  real *8 :: dsdt(maxsrc), rnx(maxsrc), rny(maxsrc)
-  real *8 :: charge(maxsrc), dipstr(maxsrc), chargesort(maxsrc)
-  real *8 :: dipstrsort(maxsrc), dipvec(2,maxsrc), dipvecsort(2,maxsrc)
-  real *8 :: quadstr(maxsrc), quadstrsort(maxsrc), quadvec(3,maxsrc)
-  real *8 :: quadvecsort(3,maxsrc)
-  real *8 :: octstr(maxsrc), octstrsort(maxsrc), octvec(4,maxsrc)
-  real *8 :: octvecsort(4,maxsrc)
-  real *8 :: pot(maxsrc), grad(2,maxsrc), hess(3,maxsrc)
-  real *8 :: pottarg(maxsrc), gradtarg(2,maxsrc), hesstarg(3,maxsrc)
+
+  real *8, dimension(:,:), allocatable :: src, srcsort, targ, targsort
+  real *8, dimension(:), allocatable :: dsdt, rnx, rny, charge, dipstr, &
+       chargesort, dipstrsort, quadstr, quadstrsort, octstr, octstrsort, &
+       pot, pottarg
+  real *8, dimension(:,:), allocatable :: dipvec, dipvecsort, &
+       quadvec, quadvecsort, octvec, octvecsort, grad, hess, &
+       gradtarg, hesstarg
+
+
   real *8 gradtemp(2), gradtargtemp(2), err2(2)
   real *8 hesstemp(3), hesstargtemp(3), err3(3)
+  real *8 :: zll(2), blength
+
   parameter (iseed = 281+3308004)
 
   beta = 1.0d-15
@@ -41,6 +40,40 @@ program mbhfmmtest
   temp = hkrand(iseed)
   call prini(6,13)
 
+  ! allocate memory
+
+  maxboxes = 30000
+  maxlevel = 30
+  maxsrc = 1000000
+
+  allocate(src(2,maxsrc),srcsort(2,maxsrc), &
+       targ(2,maxsrc),targsort(2,maxsrc))
+
+  allocate(dsdt(maxsrc),rnx(maxsrc),rny(maxsrc), &
+       charge(maxsrc),dipstr(maxsrc), &
+       chargesort(maxsrc),dipstrsort(maxsrc), &
+       quadstr(maxsrc),quadstrsort(maxsrc), &
+       octstr(maxsrc),octstrsort(maxsrc), &
+       pot(maxsrc),pottarg(maxsrc))
+  
+  allocate(dipvec(2,maxsrc),dipvecsort(2,maxsrc), &
+       quadvec(3,maxsrc),quadvecsort(3,maxsrc), &
+       octvec(4,maxsrc),octvecsort(4,maxsrc), &
+       grad(2,maxsrc),hess(3,maxsrc), &
+       gradtarg(2,maxsrc),hesstarg(3,maxsrc))
+  
+  allocate(isrcsort(maxsrc),itargsort(maxsrc))
+  allocate(istartlev(0:maxlevel),nblevel(0:maxlevel))  
+  allocate(isrcladder(2,maxboxes),itargladder(2,maxboxes))
+  allocate(ichildbox(4,maxboxes),icolleagbox(9,maxboxes), &
+       neighbors(12,maxboxes))
+  allocate(iboxlev(maxboxes),nnbrs(maxboxes),iboxes(maxboxes), &
+       localonoff(maxboxes))
+  allocate(levelbox(maxboxes),icolbox(maxboxes), &
+       irowbox(maxboxes),iparentbox(maxboxes))
+  allocate(itemparray(maxboxes),iflag(maxboxes))
+  
+  
   ! Test accuracy against direct calculation
 
   ifdirect = 1
